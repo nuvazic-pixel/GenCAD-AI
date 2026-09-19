@@ -1,0 +1,68 @@
+name: GenCAD-AI holdout_001
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".holdout_001_trigger"
+
+jobs:
+  holdout:
+    runs-on: ubuntu-latest
+
+    env:
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY || secrets.GENCAD }}
+      GENCAD_LLM_PROVIDER: openai
+      GENCAD_LLM_MODEL: gpt-5.6-sol
+      GENCAD_RUN_ID: holdout_001
+      GENCAD_PROMPT_VERSION: v1
+      GENCAD_BENCHMARK_VERSION: 0.2.5-holdout
+      GENCAD_SCHEMA_VERSION: 0.2.4
+      GENCAD_GIT_COMMIT: ${{ github.sha }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Verify API key is configured
+        shell: bash
+        run: |
+          if [ -z "$OPENAI_API_KEY" ]; then
+            echo "::error::Repository secret OPENAI_API_KEY (or legacy GENCAD) is not configured."
+            exit 1
+          fi
+
+      - name: Run frozen holdout_001
+        id: benchmark
+        shell: bash
+        run: |
+          mkdir -p reports/holdout_001
+          set +e
+          python -m scripts.run_llm_benchmark 2>&1 | tee reports/holdout_001/runner.log
+          code=${PIPESTATUS[0]}
+          echo "exit_code=$code" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Upload holdout evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gencad-ai-holdout-001
+          path: reports/holdout_001/
+          if-no-files-found: warn
+          retention-days: 90
+
+      - name: Enforce release gate
+        if: steps.benchmark.outputs.exit_code != '0'
+        shell: bash
+        run: |
+          echo "::error::holdout_001 did not pass the release gate or the live run failed."
+          exit 1
