@@ -1,4 +1,4 @@
-# GenCAD-AI v0.2.7 — EvidenceGuard Live Challenge
+# GenCAD-AI v0.3.0 — Proof-to-Geometry Bridge
 
 ![tests](https://github.com/nuvazic-pixel/GenCAD-AI/actions/workflows/tests.yml/badge.svg)
 
@@ -30,9 +30,15 @@ TerminologyResolver
       ↓
 EngineeringSpec                  deterministic boundary
       ↓
-Validator / Release Gate
+Validator
       ↓
-future CAD / CAE generation
+CADReleaseGate                    geometry permission boundary
+      ↓ PASS only
+ReleasedBracketParameters
+      ↓
+Constrained CadQuery Generator
+      ↓
+STEP / STL + provenance manifest
 ```
 
 The model is not allowed to create `DERIVED` engineering evidence. Missing information remains unknown until an explicit deterministic resolver, standard, or calculation supplies it.
@@ -236,6 +242,119 @@ This is a small focused challenge, so the observed 2/2 catch rate is evidence fo
 
 The raw artifact, fingerprint and human adjudication are preserved under `reports/evidence_guard_live_001/`.
 
+## v0.3.0 — Proof-to-Geometry Bridge
+
+v0.3.0 connects validated engineering evidence to a deliberately constrained CAD generator.
+
+The CAD boundary has one hard invariant:
+
+```text
+UNKNOWN     → forbidden
+HYPOTHESIS  → forbidden
+CONFIRMED   → allowed
+DERIVED     → allowed only with deterministic provenance
+```
+
+No raw parser field and no `EngineeringSpec` object can be passed directly to the CAD generator.
+
+The legal flow is:
+
+```text
+EngineeringSpec
+      ↓
+ValidationReport = READY
+      ↓
+CADReleaseGate
+      ↓
+ReleasedBracketParameters
+      ↓
+pipe_saddle_bracket_v1
+```
+
+The first generator intentionally supports only a two-hole pipe saddle bracket. Unsupported generator capability is rejected instead of approximated.
+
+### CADReleaseDecision
+
+The release boundary records:
+
+```text
+allowed
+status
+generator
+blocking_fields
+failed_rules
+accepted_parameters
+evidence_summary
+reason
+```
+
+The geometry generator accepts only `ReleasedBracketParameters`.
+
+A regression test explicitly enforces:
+
+```text
+test_cad_generator_never_accepts_parsed_intent_directly
+```
+
+### Proof-to-geometry A/B demo
+
+`geometry_demo_001` used two nearly identical scenarios.
+
+**Scenario A**
+
+```text
+"Ø42 pipe"
+```
+
+The raw intent emulated the unsupported unit behavior observed live in v0.2.7:
+
+```text
+42 mm
+source_text = "Ø42 pipe"
+```
+
+Result:
+
+```text
+EvidenceGuard → strips mm
+EngineeringSpec.pipe_diameter → UNKNOWN
+Validation → NEEDS_CLARIFICATION
+CADReleaseGate → FAIL
+STEP/STL → NOT GENERATED
+```
+
+**Scenario B**
+
+```text
+"Ø42 mm pipe"
+```
+
+Result:
+
+```text
+EvidenceGuard → PASS
+Validation → READY
+CADReleaseGate → PASS
+STEP → GENERATED
+STL  → GENERATED
+manifest → GENERATED
+```
+
+Released parameters:
+
+```text
+pipe_diameter_mm    42.0
+wall_thickness_mm    4.0
+bracket_width_mm    30.0
+base_thickness_mm    6.0
+hole_count            2
+hole_diameter_mm      6.6
+```
+
+The generated STL was independently inspected as watertight with a positive volume. STEP/STL SHA-256 hashes match the generation manifest.
+
+The binary geometry is stored as a GitHub Actions artifact; repository-side evidence is preserved under `reports/geometry_demo_001/`.
+
 ## Safety invariants
 
 GenCAD-AI intentionally rejects common unsafe shortcuts:
@@ -359,6 +478,7 @@ See:
 - [holdout_002 human adjudication](reports/holdout_002/ADJUDICATION.md)
 - [EvidenceGuard live challenge](reports/evidence_guard_live_001/)
 - [EvidenceGuard live adjudication](reports/evidence_guard_live_001/ADJUDICATION.md)
+- [v0.3.0 proof-to-geometry evidence](reports/geometry_demo_001/)
 
 ## Benchmark
 
@@ -428,42 +548,41 @@ case metrics
 
 ## Current status
 
-The evidence chain now has four distinct stages:
+GenCAD-AI now demonstrates the full controlled path from probabilistic language interpretation to physical geometry permission:
 
 ```text
-known development benchmark
-    → 100% after calibration
-
-holdout_001
-    → exposed generalization gaps
-
-v0.2.6 Evidence Integrity Layer
-    → deterministic evidence boundary
-
-holdout_002
-    → 100% recall / 100% READY accuracy / 0% unsafe proceed
-    → raw FAIL from one evaluator coverage gap
-    → gap patched without rewriting the frozen result
-
-v0.2.7 EvidenceGuard Live Challenge
-    → 2 unsupported-unit inventions observed live
-    → 2 / 2 intercepted
-    → 0 misses
-    → 0 false positives
-    → 0 downstream exposures
-    → 8 / 8 final statuses correct
-    → PASS_WITH_LIVE_INTERVENTION
+Natural language
+      ↓
+LLM interpretation
+      ↓
+SourceEvidenceGuard
+      ↓
+EngineeringSpec
+      ↓
+Validation
+      ↓
+CADReleaseGate
+      ↓
+Released parameters only
+      ↓
+STEP / STL
 ```
+
+The first live geometry proof established:
+
+- unsupported source evidence blocks CAD generation;
+- explicit supported evidence releases the same geometry request;
+- the CAD generator cannot accept raw parser intent directly;
+- generated geometry carries a provenance manifest;
+- the STEP/STL hashes are linked to the released EngineeringSpec and release decision;
+- the exported STL is watertight;
+- `prompt_v1` remains unchanged.
 
 ### Current decision
 
-`prompt_v1` remains frozen.
+The v0.3.0 proof is intentionally narrow: one generator and one two-hole bracket family.
 
-The live challenge provides direct evidence that the deterministic boundary can override unsupported model output before it becomes an engineering value. The project still does not claim that every evidence class is solved; the demonstrated live guard currently covers the tested unit-evidence failure mode.
-
-The next milestone should move upward in engineering value rather than simply multiplying benchmark cases: connect validated `EngineeringSpec` values to a constrained CAD generator while preserving the same evidence/provenance boundary.
-
-A prompt revision should still be introduced only when a genuine parser failure survives deterministic controls.
+The next highest-value milestone is **v0.3.1 Geometry Verification** rather than a broader generative prompt surface. It should validate geometric invariants such as solid validity, expected hole count, minimum wall geometry, bounding dimensions, and reproducible parameter-to-shape fingerprints before expanding to more CAD families.
 
 
 ---
