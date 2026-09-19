@@ -1,4 +1,4 @@
-# GenCAD-AI v0.2.4 — Safety-First Engineering Intent for Generative CAD
+# GenCAD-AI v0.2.5 — Frozen Holdout Evaluation
 
 ![tests](https://github.com/nuvazic-pixel/GenCAD-AI/actions/workflows/tests.yml/badge.svg)
 
@@ -145,6 +145,24 @@ The same system prompt, `prompt_v1`, was preserved across all three live runs.
 
 These numbers are **calibration results on the known 25-case development benchmark**, not evidence that the model itself improved and not proof of generalization.
 
+### Frozen holdout_001
+
+v0.2.5 added a separate 15-case holdout that was not used during the previous calibration loop.
+
+| Run | Cases | Recall | Hallucination | Semantic confusion | Unsafe proceed | Correct READY | Gate |
+|---|---:|---:|---:|---:|---:|---:|---|
+| holdout_001 | 15 | 94.32% | 0.74% | 0% | 0% | 66.67% | FAIL |
+
+The holdout exposed real generalization gaps that were hidden by the perfect development-benchmark score.
+
+Human adjudication found three distinct categories:
+
+- terminology coverage gaps such as `Halter`, `Rohrhalter`, `Pipe clamp bracket`, and `Stahl`
+- one genuine evidence-boundary issue where `Ø42` was assigned an unsupported `mm` unit
+- one holdout ground-truth ambiguity involving simultaneous physical-fastener and hole-associated M6 semantics
+
+The raw holdout remains frozen and the official gate remains FAIL. Human review is documented separately rather than rewriting the observed result.
+
 The prompt SHA-256 remained:
 
 ```text
@@ -161,6 +179,8 @@ See:
 - [baseline_003 evidence](reports/baseline_003/)
 - [001 → 002 calibration](reports/CALIBRATION_001_TO_002.md)
 - [002 → 003 calibration](reports/CALIBRATION_002_TO_003.md)
+- [holdout_001 evidence](reports/holdout_001/)
+- [holdout_001 human adjudication](reports/holdout_001/ADJUDICATION.md)
 
 ## Benchmark
 
@@ -230,15 +250,22 @@ case metrics
 
 ## Current status
 
-v0.2.4 achieves a perfect score on the **known development benchmark** while preserving all hard safety gates.
+The known 25-case development benchmark reaches 100%, but the frozen 15-case holdout does **not**.
 
-That is the end of the known-benchmark calibration phase.
+That is the useful result: the evaluation detected that the calibrated system had not yet generalized perfectly.
 
-### Next validation
+### Next remediation
 
-Before `prompt_v2` or any generalization claim, the next step is a **frozen holdout benchmark with unseen wording and combinations**.
+Do **not** tune `prompt_v1` first.
 
-If the holdout exposes genuine parser failures, prompt changes will be minimal and evidence-driven.
+The evidence points to deterministic improvements before prompt engineering:
+
+1. expand multilingual and phrase-level `TerminologyResolver` aliases
+2. add a source-evidence guard that rejects extracted units not supported by the source phrase
+3. formalize when an explicit physical fastener also establishes a hole-associated designation
+4. preserve `holdout_001` unchanged and validate remediation on a new benchmark/run
+
+Only residual failures that survive those deterministic controls should justify `prompt_v2`.
 
 ---
 
