@@ -2,9 +2,6 @@ name: GenCAD-AI baseline_003 hole semantics
 
 on:
   workflow_dispatch:
-  push:
-    paths:
-      - ".baseline_003_trigger"
 
 jobs:
   baseline:
