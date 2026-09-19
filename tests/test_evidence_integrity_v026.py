@@ -170,3 +170,30 @@ def test_model_supplied_association_is_supported_only_by_explicit_relation():
 
     assert relation_supports_hole_association(prompt, "M6") is True
     assert unexpected_association_is_supported(prompt, intent) is True
+
+
+def test_german_compound_hole_word_supports_explicit_association():
+    prompt = (
+        "zwei M6 Schrauben durch zwei 6,6 mm Durchgangsbohrungen."
+    )
+    intent = _intent(
+        fastener_designation=_field("M6", text="M6 Schrauben"),
+        associated_fastener_designation=_field(
+            "M6",
+            text="M6 Schrauben durch zwei 6,6 mm Durchgangsbohrungen",
+        ),
+        hole_count=_field(2, text="zwei 6,6 mm Durchgangsbohrungen"),
+        hole_diameter=_field(
+            "6,6",
+            unit="mm",
+            text="6,6 mm Durchgangsbohrungen",
+        ),
+    )
+
+    assert relation_supports_hole_association(prompt, "M6") is True
+    assert unexpected_association_is_supported(prompt, intent) is True
+
+
+def test_german_threaded_compound_is_recognized_as_hole_word():
+    prompt = "M8 Schrauben durch zwei Gewindebohrungen."
+    assert relation_supports_hole_association(prompt, "M8") is True
