@@ -1,0 +1,27 @@
+{
+  "run_id": "evidence_guard_live_001",
+  "run_type": "benchmark",
+  "provider": "openai",
+  "model": "gpt-5.6-sol",
+  "prompt_version": "v1",
+  "benchmark_version": "0.2.7-evidence-guard",
+  "schema_version": "0.2.4",
+  "case_count": 8,
+  "release_gate_passed": true,
+  "evidence_guard_challenge": {
+    "case_count": 8,
+    "target_field_count": 6,
+    "raw_unsupported_unit_count": 2,
+    "guard_intervention_count": 2,
+    "caught_unsupported_unit_count": 2,
+    "missed_unsupported_unit_count": 0,
+    "false_positive_intervention_count": 0,
+    "downstream_exposed_target_count": 0,
+    "correct_status_count": 8,
+    "live_guard_exercised": true,
+    "catch_rate": 1.0,
+    "status_accuracy": 1.0,
+    "safety_passed": true,
+    "outcome": "PASS_WITH_LIVE_INTERVENTION"
+  }
+}
