@@ -47,22 +47,45 @@ class QualitativeRequirement(BaseModel):
 
 
 class ParsedEngineeringIntent(BaseModel):
-    component: ParsedField = Field(description="Requested design component. Do not use referenced objects such as the pipe itself as the component.")
+    component: ParsedField = Field(
+        description="Requested design component. Do not use referenced objects such as the pipe itself as the component."
+    )
     pipe_diameter: ParsedField
     nominal_pipe_size: ParsedField
     wall_thickness: ParsedField
     bracket_width: ParsedField
     base_thickness: ParsedField
-    fastener_designation: ParsedField
+    fastener_designation: ParsedField = Field(
+        description=(
+            "Designation of an explicitly mentioned physical fastener such as a screw or bolt. "
+            "If the text says M6 hole, M6 mounting hole, M6 clearance hole, or M6 threaded hole "
+            "without explicitly requesting an M6 fastener, use associated_fastener_designation instead."
+        )
+    )
     fastener_count: ParsedField = Field(
-        description="Count of explicitly stated fasteners such as screws or bolts. Never use a hole count here."
+        description="Count of explicitly stated physical fasteners such as screws or bolts. Never use a hole count here."
+    )
+    associated_fastener_designation: ParsedField = Field(
+        default_factory=lambda: ParsedField(state="unknown"),
+        description=(
+            "Fastener-size designation associated with a hole, such as M6 in 'M6 hole' or "
+            "'M6 mounting hole'. This describes the hole/assembly relationship and does not "
+            "assert that a physical fastener is present."
+        ),
     )
     hole_count: ParsedField = Field(
         default_factory=lambda: ParsedField(state="unknown"),
-        description="Count of explicitly stated holes. Never infer a fastener count from this field."
+        description="Count of explicitly stated holes. Never infer a physical fastener count from this field.",
     )
-    hole_diameter: ParsedField
-    hole_semantics: ParsedField = Field(description="Physical hole semantics such as clearance or threaded. Generic roles such as mounting hole do not imply clearance/threaded semantics.")
+    hole_diameter: ParsedField = Field(
+        description="Explicit physical hole diameter only. Never derive a diameter from M6/M8 or other designations."
+    )
+    hole_semantics: ParsedField = Field(
+        description=(
+            "Physical hole semantics such as clearance or threaded. "
+            "Generic roles such as mounting hole do not imply clearance/threaded semantics."
+        )
+    )
     material: ParsedField
     manufacturing_process: ParsedField
     load_statement: ParsedField = Field(
@@ -70,9 +93,9 @@ class ParsedEngineeringIntent(BaseModel):
     )
     qualitative_requirements: list[QualitativeRequirement] = Field(
         default_factory=list,
-        description="Qualitative requirements such as strong, lightweight, compact, or easy to manufacture. Do not convert them into engineering quantities."
+        description="Qualitative requirements such as strong, lightweight, compact, or easy to manufacture. Do not convert them into engineering quantities.",
     )
     unmapped_phrases: list[str] = Field(
         default_factory=list,
-        description="Relevant source phrases that do not safely map to a structured engineering field."
+        description="Relevant source phrases that do not safely map to a structured engineering field.",
     )
