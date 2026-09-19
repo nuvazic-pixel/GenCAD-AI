@@ -2,9 +2,6 @@ name: GenCAD-AI baseline_002 calibration
 
 on:
   workflow_dispatch:
-  push:
-    paths:
-      - ".baseline_002_trigger"
 
 jobs:
   baseline:
