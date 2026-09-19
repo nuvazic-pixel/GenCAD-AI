@@ -17,6 +17,7 @@ INTENT_FIELDS = [
     "base_thickness",
     "fastener_designation",
     "fastener_count",
+    "associated_fastener_designation",
     "hole_count",
     "hole_diameter",
     "hole_semantics",
@@ -86,11 +87,13 @@ def score_case(
         if trap == "pipe_diameter":
             confused = spec.pipe_diameter.state != EvidenceState.UNKNOWN
         elif trap == "clearance_hole_diameter":
-            confused = spec.clearance_hole_diameter.state != EvidenceState.UNKNOWN
+            confused = spec.hole_diameter.state != EvidenceState.UNKNOWN
         elif trap == "fastener_designation":
             confused = spec.fastener_designation.state != EvidenceState.UNKNOWN
         elif trap == "fastener_count":
             confused = spec.fastener_count.state != EvidenceState.UNKNOWN
+        elif trap == "associated_fastener_designation":
+            confused = spec.associated_fastener_designation.state != EvidenceState.UNKNOWN
         elif trap == "hole_count":
             confused = spec.hole_count.state != EvidenceState.UNKNOWN
         elif trap == "material":
