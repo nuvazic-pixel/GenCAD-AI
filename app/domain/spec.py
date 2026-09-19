@@ -25,7 +25,7 @@ class LengthValue(BaseModel):
 
 
 class EngineeringSpec(BaseModel):
-    schema_version: Literal["0.2.3"] = "0.2.3"
+    schema_version: Literal["0.2.4"] = "0.2.4"
     component: EngineeringValue[ComponentType]
     pipe_diameter: EngineeringValue[LengthValue]
     nominal_pipe_size: EngineeringValue[str]
@@ -34,8 +34,9 @@ class EngineeringSpec(BaseModel):
     base_thickness: EngineeringValue[LengthValue]
     fastener_designation: EngineeringValue[str]
     fastener_count: EngineeringValue[int]
+    associated_fastener_designation: EngineeringValue[str]
     hole_count: EngineeringValue[int]
-    clearance_hole_diameter: EngineeringValue[LengthValue]
+    hole_diameter: EngineeringValue[LengthValue]
     hole_semantics: EngineeringValue[str]
     material: EngineeringValue[MaterialFamily]
     manufacturing_process: EngineeringValue[str]
