@@ -24,7 +24,7 @@ def write_reports(
     )
 
     gate = "PASS" if summary.release_gate_passed else "FAIL"
-    md = f"""# GenCAD-AI v0.2.2 Benchmark Report
+    md = f"""# GenCAD-AI Benchmark Report
 
 **Model:** `{summary.model}`  
 **Cases:** {summary.case_count}  
