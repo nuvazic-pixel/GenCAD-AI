@@ -53,6 +53,7 @@ CRITICAL_HALLUCINATION_FIELDS = {
     "base_thickness",
     "fastener_designation",
     "fastener_count",
+    "associated_fastener_designation",
     "hole_count",
     "hole_diameter",
     "load_statement",
@@ -87,11 +88,13 @@ def _semantic_trap_triggered(trap: str, spec: EngineeringSpec) -> bool:
     if trap == "pipe_diameter":
         return spec.pipe_diameter.state != EvidenceState.UNKNOWN
     if trap == "clearance_hole_diameter":
-        return spec.clearance_hole_diameter.state != EvidenceState.UNKNOWN
+        return spec.hole_diameter.state != EvidenceState.UNKNOWN
     if trap == "fastener_designation":
         return spec.fastener_designation.state != EvidenceState.UNKNOWN
     if trap == "fastener_count":
         return spec.fastener_count.state != EvidenceState.UNKNOWN
+    if trap == "associated_fastener_designation":
+        return spec.associated_fastener_designation.state != EvidenceState.UNKNOWN
     if trap == "hole_count":
         return spec.hole_count.state != EvidenceState.UNKNOWN
     if trap == "material":
@@ -138,6 +141,7 @@ def classify_case(
         "base_thickness",
         "fastener_designation",
         "fastener_count",
+        "associated_fastener_designation",
         "hole_count",
         "hole_diameter",
         "hole_semantics",
