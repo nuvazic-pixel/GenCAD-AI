@@ -106,26 +106,31 @@ def relation_supports_hole_association(
     text = normalize_text(prompt)
     d = re.escape(normalize_text(designation))
 
-    # Direct hole designation, e.g. "M6 clearance holes" / "M8 threaded holes".
-    direct = re.search(
-        rf"\b{d}\b[^.!?]{{0,40}}\b(?:hole|holes|bohrung|bohrungen)\b",
-        text,
-        re.IGNORECASE,
-    )
-    if direct:
-        return True
+    # Split on sentence punctuation, but do not split decimal numbers such as 6.6.
+    segments = [
+        segment.strip()
+        for segment in re.split(r"(?<!\\d)[.!?](?!\\d)", text)
+        if segment.strip()
+    ]
 
-    # Explicit assembly relation, e.g. "M6 screws through ... holes"
-    # or German "M6 Schrauben durch ... Bohrungen".
-    relation = re.search(
-        rf"\b{d}\b[^.!?]{{0,60}}"
-        rf"\b(?:screw|screws|bolt|bolts|schraube|schrauben)\b"
-        rf"[^.!?]{{0,80}}\b(?:through|into|in|durch|in)\b"
-        rf"[^.!?]{{0,80}}\b(?:hole|holes|bohrung|bohrungen)\b",
-        text,
+    direct_pattern = re.compile(
+        rf"\\b{d}\\b\\s+"
+        rf"(?:(?:clearance|threaded|mounting|befestigungs|gewinde|durchgangs)\\s+)?"
+        rf"\\b(?:hole|holes|bohrung|bohrungen)\\b",
         re.IGNORECASE,
     )
-    return relation is not None
+    relation_pattern = re.compile(
+        rf"\\b{d}\\b.{{0,40}}"
+        rf"\\b(?:screw|screws|bolt|bolts|schraube|schrauben)\\b"
+        rf".{{0,60}}\\b(?:through|into|durch|in)\\b"
+        rf".{{0,80}}\\b(?:hole|holes|bohrung|bohrungen)\\b",
+        re.IGNORECASE,
+    )
+
+    return any(
+        direct_pattern.search(segment) or relation_pattern.search(segment)
+        for segment in segments
+    )
 
 
 def unexpected_association_is_supported(
