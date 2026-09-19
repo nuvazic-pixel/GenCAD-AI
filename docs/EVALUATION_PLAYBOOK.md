@@ -1,9 +1,8 @@
-# GenCAD-AI Evaluation Playbook v2.0
+# GenCAD-AI Evaluation Playbook
 
-Status: **FROZEN for v0.2.2**
+The original v2.0 protocol was frozen for the v0.2.2 development benchmark. The rules below preserve that history and add the evidence-integrity and holdout discipline learned through v0.2.6.
 
-This document defines the operational evaluation protocol for the engineering-intent parser.
-Prompt changes are not accepted by intuition alone; they must be supported by benchmark evidence.
+Prompt changes are not accepted by intuition alone; they require evidence that a failure remains after deterministic controls have been examined.
 
 ## 1. Failure classification
 
@@ -32,12 +31,12 @@ Root-cause analysis remains a human-review step.
 
 All must remain zero:
 
-- Unsafe Proceed Rate
+- Unsafe Proceed
 - Critical Hallucinations
 - Critical Semantic Errors
 - Positive-Control Regressions
 
-If any hard gate is breached, the candidate is rejected.
+If any hard gate is breached, the raw run fails. Human adjudication may explain the cause, but it does not retroactively change the official raw gate.
 
 ## 3. Soft targets
 
@@ -48,19 +47,162 @@ These guide optimization but do not override a hard-gate failure:
 - Correct READY Rate >= 90%
 - Hallucinated Field Rate <= 1%
 
-## 4. Meaningful improvement
+## 4. Evidence Integrity boundary
 
-For the current 25-case benchmark, percentage changes alone are too granular to justify conclusions.
+From v0.2.6 onward, evaluation distinguishes **raw model behavior** from **engineering-safe accepted evidence**.
+
+```text
+Natural language
+      ↓
+LLM
+      ↓
+Raw ParsedEngineeringIntent
+      ↓
+SourceEvidenceGuard
+      ↓
+Guarded ParsedEngineeringIntent
+      ↓
+Normalizer / TerminologyResolver
+      ↓
+EngineeringSpec
+      ↓
+Validator
+```
+
+The raw parser output is immutable run evidence. Guard actions never erase it.
+
+Each per-case trace should preserve:
+
+```text
+raw_parsed_intent
+parsed_intent
+source_evidence_guard
+engineering_spec
+validation_report
+failures
+metrics
+```
+
+### Field-level evidence rule
+
+For engineering units, evidence is checked against the field's own `source_text`.
+
+An unrelated unit elsewhere in the prompt must not justify a model-provided unit.
+
+Example:
+
+```text
+prompt:
+"Ø42 pipe with 4 mm wall thickness"
+
+raw parser:
+pipe_diameter = 42 mm
+source_text = "Ø42 pipe"
+
+guard:
+"mm" is absent from this field-level source phrase
+→ strip unsupported unit
+→ no physical length can be produced
+```
+
+The full prompt may be retained for audit but is deliberately not sufficient evidence for that unit.
+
+## 5. Deterministic derivation and provenance
+
+The LLM must never produce `DERIVED`.
+
+A downstream deterministic rule may produce a derived engineering value only when:
+
+1. the input evidence is explicit and accepted,
+2. the rule is deterministic,
+3. the rule has a stable identifier,
+4. provenance records the rule and supporting source.
+
+Example:
+
+```text
+"M6 screws through two 6.6 mm clearance holes"
+
+CONFIRMED physical fastener = M6
+        ↓
+ASSEMBLY_ASSOCIATION_V1
+        ↓
+DERIVED associated fastener designation = M6
+```
+
+This does not derive a hole diameter from M6.
+
+## 6. Terminology normalization
+
+Surface wording and engineering identity are separate concerns.
+
+Examples of deterministic equivalence may include:
+
+```text
+pipe bracket
+Halter
+Rohrhalter
+Pipe clamp bracket
+    → pipe_bracket
+
+steel
+Stahl
+    → steel
+```
+
+A terminology miss should not automatically be treated as a parser failure if the raw model correctly preserved the source term.
+
+## 7. Root-cause precedence
+
+Before changing a prompt, every observed failure should be adjudicated in this order:
+
+1. **Ground-truth / evaluator question**  
+   Is the expected label actually unambiguous and is the evaluator measuring the intended behavior?
+
+2. **Deterministic system question**  
+   Did normalization, terminology, evidence guarding, ontology, validation or a deterministic relation rule fail despite correct source extraction?
+
+3. **Parser/model question**  
+   Did the model miss explicit source evidence, promote uncertainty, invent unsupported evidence, or create a semantic confusion that survives deterministic protections?
+
+Prompt changes belong only to category 3 after categories 1 and 2 have been ruled out.
+
+## 8. Holdout discipline
+
+A holdout is frozen before its live run.
+
+After the run:
+
+- do not modify its prompts or ground truth to improve the observed score;
+- do not overwrite its raw artifact or release-gate result;
+- record human adjudication in a separate document;
+- fix the system in a new version;
+- validate remediation on a **new** benchmark/run.
+
+A failed holdout remains failed even when later review proves that one failure came from the evaluator itself.
+
+This is intentional: the historical artifact records what the system and evaluator actually did at that time.
+
+### No official rerun after inspection
+
+Once a holdout has been inspected, rerunning the same set as the official proof of remediation is not considered independent validation.
+
+Regression tests may reproduce individual cases deterministically, but generalization claims require new unseen cases.
+
+## 9. Meaningful improvement
+
+For small benchmarks, percentage changes alone are too coarse.
 
 A candidate has meaningful improvement when:
 
-1. at least one previously failing case is fully fixed,
+1. at least one previously failing behavior is demonstrably fixed,
 2. no new hard-gate failure is introduced,
-3. no positive-control case regresses.
+3. no positive-control case regresses,
+4. the change is causally attributable to the intended layer.
 
-At 100+ benchmark cases, metric deltas and interval estimates may be added.
+At 100+ cases, interval estimates and additional statistical analysis may be added.
 
-## 5. Experiment fingerprint
+## 10. Experiment fingerprint
 
 Every live run records:
 
@@ -80,64 +222,60 @@ Every live run records:
 
 No API keys or secrets are stored in the fingerprint.
 
-## 6. Iteration workflow
+## 11. Iteration workflow
 
 ```text
-freeze benchmark
+freeze benchmark / holdout
       ↓
 freeze prompt
       ↓
-run baseline
+run live evaluation
+      ↓
+preserve raw artifact + fingerprint
       ↓
 FailureClassifier
       ↓
-human root-cause review
+human root-cause adjudication
       ↓
 minimal corrective change
       ↓
-run candidate
+deterministic regression tests
       ↓
-BenchmarkComparator
+new unseen evaluation set
       ↓
 ReleaseGate
       ↓
-accept / reject
+accept / investigate
 ```
 
-## 7. Stop rule
+## 12. Historical evidence
 
-Prompt tuning stops when:
+### Development calibration
+
+- `baseline_001` — v0.2.2 — FAIL
+- `baseline_002` — v0.2.3 — PASS
+- `baseline_003` — v0.2.4 — PASS / 100% known development set
+
+### Generalization evidence
+
+- `holdout_001` — v0.2.5 — raw FAIL
+- `holdout_002` — v0.2.6 — raw FAIL from one deterministic relation-parser coverage gap
+
+Both holdout raw results remain immutable. Their human adjudications are stored beside the evidence under `reports/`.
+
+## 13. Current stop / continuation rule
+
+Do not create `prompt_v2` merely because a holdout fails.
+
+Continue deterministic remediation while failures are attributable to evidence control, normalization, terminology, ontology or evaluator defects.
+
+Create a prompt revision only when a genuine parser/model failure survives those controls.
+
+For a future stabilization claim, require:
 
 - all hard gates pass,
 - utility targets are acceptable,
-- the hidden benchmark passes, and
-- two consecutive iterations produce no material case-level improvement.
-
-The prompt is then frozen.
-
-## 8. v0.2.2 baseline
-
-Current public benchmark:
-
-- 20 adversarial / ambiguity cases
-- 5 positive controls
-- 25 total cases
-
-The first live model run is named `baseline_001`.
-
-Outputs are stored under:
-
-```text
-reports/baseline_001/
-├── benchmark_report.json
-├── benchmark_report.md
-├── failures.json
-├── release_gate.json
-└── fingerprint.json
-```
-
-Later candidates can be compared with:
-
-```bash
-python scripts/compare_runs.py reports/baseline_001 reports/baseline_002
-```
+- a new unseen evaluation set passes,
+- no known positive-control regression exists,
+- evidence-integrity interventions are auditable,
+- at least one live case has exercised critical guard behavior when that guard is part of the claimed safety story.
