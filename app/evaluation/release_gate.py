@@ -57,7 +57,15 @@ def evaluate_release_gate(
     warnings: list[str] = []
     if summary.explicit_fact_recall < 0.95:
         warnings.append("Explicit Fact Recall below 95%.")
-    if summary.uncertainty_preservation < 0.95:
+
+    uncertainty_opportunities = sum(
+        case.uncertainty_total
+        for case in case_metrics
+    )
+    if (
+        uncertainty_opportunities > 0
+        and summary.uncertainty_preservation < 0.95
+    ):
         warnings.append("Uncertainty Preservation below 95%.")
     if summary.correct_ready_rate < 0.90:
         warnings.append("Correct READY Rate below 90%.")
