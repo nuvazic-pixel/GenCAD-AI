@@ -14,7 +14,7 @@ from app.pipeline.builder import build_engineering_spec
 from app.pipeline.validation import validate_spec
 from app.providers.factory import build_parser
 from app.providers.prompt import SYSTEM_PROMPT
-from benchmarks import BENCHMARK
+from benchmarks import get_benchmark
 
 
 def _git_commit() -> str | None:
@@ -32,6 +32,7 @@ def _git_commit() -> str | None:
 
 
 def _write_json(path: Path, payload) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(
         json.dumps(payload, indent=2, ensure_ascii=False),
         encoding="utf-8",
@@ -42,40 +43,55 @@ def main():
     config = LLMConfig()
     parser = build_parser(config)
 
-    run_id = os.getenv("GENCAD_RUN_ID", "baseline_001")
+    run_id = os.getenv("GENCAD_RUN_ID", "baseline_002")
     prompt_version = os.getenv("GENCAD_PROMPT_VERSION", "v1")
+    benchmark_version = os.getenv("GENCAD_BENCHMARK_VERSION", "0.2.3")
+    schema_version = os.getenv("GENCAD_SCHEMA_VERSION", "0.2.3")
+
+    benchmark = get_benchmark(benchmark_version)
     output_dir = Path("reports") / run_id
     output_dir.mkdir(parents=True, exist_ok=True)
 
     case_metrics = []
     classifications = []
 
-    for case in BENCHMARK:
+    for case in benchmark:
         parsed: ParsedEngineeringIntent = parser.parse(case["prompt"])
         spec = build_engineering_spec(case["prompt"], parsed)
         report = validate_spec(spec)
-
-        case_metrics.append(
-            score_case(
-                case=case,
-                actual_intent=parsed,
-                spec=spec,
-                report=report,
-            )
+        classification = classify_case(
+            case=case,
+            actual_intent=parsed,
+            spec=spec,
+            report=report,
         )
-        classifications.append(
-            classify_case(
-                case=case,
-                actual_intent=parsed,
-                spec=spec,
-                report=report,
-            )
+        metrics = score_case(
+            case=case,
+            actual_intent=parsed,
+            spec=spec,
+            report=report,
+        )
+
+        case_metrics.append(metrics)
+        classifications.append(classification)
+
+        _write_json(
+            output_dir / "cases" / f"{case['id']}.json",
+            {
+                "case_id": case["id"],
+                "prompt": case["prompt"],
+                "expected_status": case["expected_status"],
+                "parsed_intent": parsed.model_dump(mode="json"),
+                "engineering_spec": spec.model_dump(mode="json"),
+                "validation_report": report.model_dump(mode="json"),
+                "failures": classification.model_dump(mode="json")["failures"],
+                "metrics": metrics.model_dump(mode="json"),
+            },
         )
 
     summary = summarize(config.model, case_metrics)
     gate = evaluate_release_gate(summary, case_metrics, classifications)
 
-    # One authoritative definition of PASS in every generated report.
     summary.release_gate_passed = gate.passed
 
     json_path, md_path = write_reports(
@@ -98,16 +114,31 @@ def main():
         provider=config.provider,
         model=config.model,
         prompt_version=prompt_version,
-        benchmark_version="0.2.2",
-        schema_version="0.2.1",
+        benchmark_version=benchmark_version,
+        schema_version=schema_version,
         prompt=SYSTEM_PROMPT,
-        benchmark=BENCHMARK,
+        benchmark=benchmark,
         schema=ParsedEngineeringIntent.model_json_schema(),
         git_commit=_git_commit(),
     )
     _write_json(
         output_dir / "fingerprint.json",
         fingerprint.model_dump(mode="json"),
+    )
+
+    _write_json(
+        output_dir / "run_manifest.json",
+        {
+            "run_id": run_id,
+            "run_type": "evaluation_calibration" if run_id == "baseline_002" else "benchmark",
+            "provider": config.provider,
+            "model": config.model,
+            "prompt_version": prompt_version,
+            "benchmark_version": benchmark_version,
+            "schema_version": schema_version,
+            "case_count": len(benchmark),
+            "release_gate_passed": gate.passed,
+        },
     )
 
     print(summary.model_dump_json(indent=2))
@@ -117,6 +148,8 @@ def main():
     print(f"Wrote {output_dir / 'failures.json'}")
     print(f"Wrote {output_dir / 'release_gate.json'}")
     print(f"Wrote {output_dir / 'fingerprint.json'}")
+    print(f"Wrote {output_dir / 'run_manifest.json'}")
+    print(f"Wrote per-case traces under {output_dir / 'cases'}")
 
     if not gate.passed:
         raise SystemExit(2)
