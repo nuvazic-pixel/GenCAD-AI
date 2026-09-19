@@ -2,9 +2,6 @@ name: GenCAD-AI geometry_demo_001
 
 on:
   workflow_dispatch:
-  push:
-    paths:
-      - ".geometry_demo_001_trigger"
 
 jobs:
   geometry:
