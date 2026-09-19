@@ -174,7 +174,9 @@ def main():
         {
             "run_id": run_id,
             "run_type": (
-                "holdout_evaluation"
+                "evidence_guard_live_challenge"
+                if run_id.startswith("evidence_guard_")
+                else "holdout_evaluation"
                 if run_id.startswith("holdout_")
                 else "evaluation_calibration"
                 if run_id in {"baseline_002", "baseline_003"}
