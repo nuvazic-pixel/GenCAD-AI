@@ -47,7 +47,7 @@ class QualitativeRequirement(BaseModel):
 
 
 class ParsedEngineeringIntent(BaseModel):
-    component: ParsedField
+    component: ParsedField = Field(description="Requested design component. Do not use referenced objects such as the pipe itself as the component.")
     pipe_diameter: ParsedField
     nominal_pipe_size: ParsedField
     wall_thickness: ParsedField
@@ -62,7 +62,7 @@ class ParsedEngineeringIntent(BaseModel):
         description="Count of explicitly stated holes. Never infer a fastener count from this field."
     )
     hole_diameter: ParsedField
-    hole_semantics: ParsedField
+    hole_semantics: ParsedField = Field(description="Physical hole semantics such as clearance or threaded. Generic roles such as mounting hole do not imply clearance/threaded semantics.")
     material: ParsedField
     manufacturing_process: ParsedField
     load_statement: ParsedField = Field(
