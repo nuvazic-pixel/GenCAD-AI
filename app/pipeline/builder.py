@@ -164,8 +164,9 @@ def build_engineering_spec(
         base_thickness=_length(intent.base_thickness),
         fastener_designation=_string(intent.fastener_designation),
         fastener_count=_integer(intent.fastener_count),
+        associated_fastener_designation=_string(intent.associated_fastener_designation),
         hole_count=_integer(intent.hole_count),
-        clearance_hole_diameter=_length(intent.hole_diameter),
+        hole_diameter=_length(intent.hole_diameter),
         hole_semantics=_hole_semantics(intent.hole_semantics),
         material=_material(intent.material),
         manufacturing_process=_string(intent.manufacturing_process),
@@ -173,17 +174,19 @@ def build_engineering_spec(
         source_prompt=prompt,
     )
 
-    required = {
+    # READY is defined by explicit geometry required to generate the bracket,
+    # not by the presence of a physical fastener specification.
+    required_geometry = {
         "component": spec.component,
         "pipe_diameter": spec.pipe_diameter,
         "wall_thickness": spec.wall_thickness,
         "bracket_width": spec.bracket_width,
         "base_thickness": spec.base_thickness,
-        "fastener_designation": spec.fastener_designation,
         "hole_count": spec.hole_count,
+        "hole_diameter": spec.hole_diameter,
         "material": spec.material,
     }
-    for path, value in required.items():
+    for path, value in required_geometry.items():
         if value.state in {EvidenceState.UNKNOWN, EvidenceState.HYPOTHESIS}:
             spec.unresolved_questions.append(f"Clarify {path}")
 
@@ -206,6 +209,14 @@ def build_engineering_spec(
     ):
         spec.warnings.append(
             "Nominal pipe size detected; physical diameter must not be inferred without a resolver."
+        )
+
+    if (
+        spec.associated_fastener_designation.state != EvidenceState.UNKNOWN
+        and spec.hole_diameter.state == EvidenceState.UNKNOWN
+    ):
+        spec.warnings.append(
+            "Hole-associated fastener designation detected; hole diameter must not be derived without a standards resolver."
         )
 
     for requirement in intent.qualitative_requirements:
