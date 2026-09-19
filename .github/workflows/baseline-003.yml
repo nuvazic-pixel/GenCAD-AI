@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      OPENAI_API_KEY: ${{ secrets.GENCAD }}
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY || secrets.GENCAD }}
       GENCAD_LLM_PROVIDER: openai
       GENCAD_LLM_MODEL: gpt-5.6-sol
       GENCAD_RUN_ID: baseline_003
@@ -36,7 +36,7 @@ jobs:
         shell: bash
         run: |
           if [ -z "$OPENAI_API_KEY" ]; then
-            echo "::error::Repository secret GENCAD is not configured."
+            echo "::error::Repository secret OPENAI_API_KEY (or legacy GENCAD) is not configured."
             exit 1
           fi
 
