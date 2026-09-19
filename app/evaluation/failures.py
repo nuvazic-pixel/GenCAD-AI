@@ -6,8 +6,9 @@ from typing import Any
 from pydantic import BaseModel, Field
 
 from app.domain.evidence import EvidenceState
-from app.domain.intent import ParsedEngineeringIntent
+from app.domain.intent import ParsedEngineeringIntent, ParsedField
 from app.domain.spec import EngineeringSpec
+from app.pipeline.normalizer import canonical_field
 from app.pipeline.validation import ValidationReport
 
 
@@ -52,6 +53,7 @@ CRITICAL_HALLUCINATION_FIELDS = {
     "base_thickness",
     "fastener_designation",
     "fastener_count",
+    "hole_count",
     "hole_diameter",
     "load_statement",
 }
@@ -63,10 +65,14 @@ HIGH_HALLUCINATION_FIELDS = {
 }
 
 
-def _norm(value: Any) -> str:
-    if value is None:
-        return ""
-    return str(value).strip().lower()
+def _unknown_expected() -> dict:
+    return {
+        "raw_value": None,
+        "raw_unit": None,
+        "source_text": None,
+        "state": "unknown",
+        "confidence": 0.0,
+    }
 
 
 def _hallucination_severity(field_name: str) -> Severity:
@@ -84,6 +90,10 @@ def _semantic_trap_triggered(trap: str, spec: EngineeringSpec) -> bool:
         return spec.clearance_hole_diameter.state != EvidenceState.UNKNOWN
     if trap == "fastener_designation":
         return spec.fastener_designation.state != EvidenceState.UNKNOWN
+    if trap == "fastener_count":
+        return spec.fastener_count.state != EvidenceState.UNKNOWN
+    if trap == "hole_count":
+        return spec.hole_count.state != EvidenceState.UNKNOWN
     if trap == "material":
         return spec.material.state != EvidenceState.UNKNOWN
     if trap == "confirmed_material":
@@ -97,13 +107,17 @@ def _semantic_trap_triggered(trap: str, spec: EngineeringSpec) -> bool:
         return getattr(spec, trap).state != EvidenceState.UNKNOWN
     if trap in {"manufacturing_process", "load_statement"}:
         return getattr(spec, trap).state != EvidenceState.UNKNOWN
-
-    # These concepts are intentionally not represented by the current schema.
-    # A future schema extension must add explicit detection before relying on them.
     if trap in {"force_newton", "safety_factor", "steel_grade", "alloy", "geometry"}:
         return False
-
     return False
+
+
+def _field_snapshot(field: ParsedField) -> dict:
+    return {
+        "value": field.raw_value,
+        "unit": field.raw_unit,
+        "state": field.state,
+    }
 
 
 def classify_case(
@@ -115,15 +129,32 @@ def classify_case(
     failures: list[FailureEvent] = []
     expected_intent = case["parsed_intent"]
 
-    for field_name, expected in expected_intent.items():
+    for field_name in [
+        "component",
+        "pipe_diameter",
+        "nominal_pipe_size",
+        "wall_thickness",
+        "bracket_width",
+        "base_thickness",
+        "fastener_designation",
+        "fastener_count",
+        "hole_count",
+        "hole_diameter",
+        "hole_semantics",
+        "material",
+        "manufacturing_process",
+        "load_statement",
+    ]:
+        expected = ParsedField.model_validate(
+            expected_intent.get(field_name, _unknown_expected())
+        )
         actual = getattr(actual_intent, field_name)
-        expected_state = expected["state"]
 
-        if expected_state == "confirmed":
+        if expected.state == "confirmed":
             matches = (
                 actual.state == "confirmed"
-                and _norm(actual.raw_value) == _norm(expected["raw_value"])
-                and _norm(actual.raw_unit) == _norm(expected.get("raw_unit"))
+                and canonical_field(field_name, actual)
+                == canonical_field(field_name, expected)
             )
             if not matches:
                 failures.append(
@@ -131,21 +162,13 @@ def classify_case(
                         type=FailureType.EXTRACTION,
                         severity=Severity.MEDIUM,
                         field=field_name,
-                        expected={
-                            "value": expected["raw_value"],
-                            "unit": expected.get("raw_unit"),
-                            "state": "confirmed",
-                        },
-                        actual={
-                            "value": actual.raw_value,
-                            "unit": actual.raw_unit,
-                            "state": actual.state,
-                        },
-                        details="Explicit fact was missed or extracted incorrectly.",
+                        expected=_field_snapshot(expected),
+                        actual=_field_snapshot(actual),
+                        details="Explicit fact was missed or extracted incorrectly after deterministic normalization.",
                     )
                 )
 
-        elif expected_state == "hypothesis":
+        elif expected.state == "hypothesis":
             if actual.state != "hypothesis":
                 failures.append(
                     FailureEvent(
@@ -157,23 +180,29 @@ def classify_case(
                         details="Uncertain source language was not preserved as hypothesis.",
                     )
                 )
-
-        elif expected_state == "unknown":
-            if actual.state != "unknown" or actual.raw_value is not None:
+            elif canonical_field(field_name, actual) != canonical_field(field_name, expected):
                 failures.append(
                     FailureEvent(
-                        type=FailureType.HALLUCINATION,
-                        severity=_hallucination_severity(field_name),
+                        type=FailureType.EXTRACTION,
+                        severity=Severity.MEDIUM,
                         field=field_name,
-                        expected="unknown",
-                        actual={
-                            "value": actual.raw_value,
-                            "unit": actual.raw_unit,
-                            "state": actual.state,
-                        },
-                        details="Model populated a field absent from benchmark ground truth.",
+                        expected=_field_snapshot(expected),
+                        actual=_field_snapshot(actual),
+                        details="Hypothesis state was preserved but the extracted value was incorrect.",
                     )
                 )
+
+        elif expected.state == "unknown" and actual.state != "unknown":
+            failures.append(
+                FailureEvent(
+                    type=FailureType.HALLUCINATION,
+                    severity=_hallucination_severity(field_name),
+                    field=field_name,
+                    expected="unknown",
+                    actual=_field_snapshot(actual),
+                    details="Model populated a field absent from calibrated benchmark ground truth.",
+                )
+            )
 
     for trap in case.get("forbidden_inferences", []):
         if _semantic_trap_triggered(trap, spec):
