@@ -31,7 +31,13 @@ class FakeClient:
 
 
 def test_openai_adapter_uses_responses_parse_and_pydantic_model():
-    payload = {name: _unknown() for name in ParsedEngineeringIntent.model_fields}
+    payload = {}
+    for name in ParsedEngineeringIntent.model_fields:
+        if name in {"qualitative_requirements", "unmapped_phrases"}:
+            payload[name] = []
+        else:
+            payload[name] = _unknown()
+
     payload["component"] = {
         "raw_value": "bracket",
         "raw_unit": None,
@@ -39,6 +45,7 @@ def test_openai_adapter_uses_responses_parse_and_pydantic_model():
         "state": "confirmed",
         "confidence": 1.0,
     }
+
     parsed = ParsedEngineeringIntent.model_validate(payload)
     client = FakeClient(parsed)
     config = LLMConfig(
