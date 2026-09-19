@@ -1,4 +1,4 @@
-# GenCAD-AI v0.2.6 — Evidence Integrity Layer
+# GenCAD-AI v0.2.7 — EvidenceGuard Live Challenge
 
 ![tests](https://github.com/nuvazic-pixel/GenCAD-AI/actions/workflows/tests.yml/badge.svg)
 
@@ -177,6 +177,65 @@ associated fastener designation = DERIVED M6
 
 The derived value carries deterministic provenance. The LLM itself is still prohibited from producing `DERIVED` evidence.
 
+## v0.2.7 — EvidenceGuard Live Challenge
+
+v0.2.7 adds a focused live adversarial challenge designed to test one question directly:
+
+> Can the model invent a plausible engineering unit, and can the deterministic guard stop it before the value becomes engineering truth?
+
+The challenge contains eight cases:
+
+- six adversarial cases with deliberately unitless target dimensions;
+- two explicit-unit controls to detect false-positive guard behavior.
+
+Challenge-specific metrics compare raw model output with guarded output and downstream EngineeringSpec state.
+
+### Live result
+
+`evidence_guard_live_001` produced:
+
+```text
+Outcome                       PASS_WITH_LIVE_INTERVENTION
+Guard-target fields           6
+Raw unsupported-unit events   2
+Caught                        2
+Missed                        0
+False-positive interventions  0
+Downstream exposures          0
+Correct final statuses        8 / 8
+Observed catch rate           100% (2 / 2 events)
+```
+
+This is the first live run in which the guard actually intercepted unsupported model-generated engineering units.
+
+### EG01 — pipe diameter
+
+```text
+source:       "Ø42 pipe"
+raw model:    42 mm
+guard:        strip unsupported "mm"
+EngineeringSpec:
+              pipe_diameter = UNKNOWN
+validation:   NEEDS_CLARIFICATION
+```
+
+### EG05 — hole diameter
+
+```text
+source:       "Ø7"
+raw model:    7 mm
+guard:        strip unsupported "mm"
+EngineeringSpec:
+              hole_diameter = UNKNOWN
+validation:   NEEDS_CLARIFICATION
+```
+
+The two explicit-unit controls reached READY with zero false-positive guard interventions.
+
+This is a small focused challenge, so the observed 2/2 catch rate is evidence for these live events rather than a statistical guarantee over all prompts or evidence types.
+
+The raw artifact, fingerprint and human adjudication are preserved under `reports/evidence_guard_live_001/`.
+
 ## Safety invariants
 
 GenCAD-AI intentionally rejects common unsafe shortcuts:
@@ -298,6 +357,8 @@ See:
 - [holdout_001 human adjudication](reports/holdout_001/ADJUDICATION.md)
 - [holdout_002 evidence](reports/holdout_002/)
 - [holdout_002 human adjudication](reports/holdout_002/ADJUDICATION.md)
+- [EvidenceGuard live challenge](reports/evidence_guard_live_001/)
+- [EvidenceGuard live adjudication](reports/evidence_guard_live_001/ADJUDICATION.md)
 
 ## Benchmark
 
@@ -367,36 +428,43 @@ case metrics
 
 ## Current status
 
-The project now has three distinct layers of evidence:
+The evidence chain now has four distinct stages:
 
 ```text
 known development benchmark
     → 100% after calibration
 
 holdout_001
-    → exposed terminology, evidence-boundary and adjudication gaps
+    → exposed generalization gaps
 
 v0.2.6 Evidence Integrity Layer
-    → deterministic remediation
+    → deterministic evidence boundary
 
 holdout_002
-    → 100% recall
-    → 100% READY accuracy
-    → 0% unsafe proceed
-    → raw FAIL from one deterministic relation-parser coverage gap
-```
+    → 100% recall / 100% READY accuracy / 0% unsafe proceed
+    → raw FAIL from one evaluator coverage gap
+    → gap patched without rewriting the frozen result
 
-That last gap has been patched and regression-tested without rewriting or retroactively passing the frozen holdout.
+v0.2.7 EvidenceGuard Live Challenge
+    → 2 unsupported-unit inventions observed live
+    → 2 / 2 intercepted
+    → 0 misses
+    → 0 false positives
+    → 0 downstream exposures
+    → 8 / 8 final statuses correct
+    → PASS_WITH_LIVE_INTERVENTION
+```
 
 ### Current decision
 
 `prompt_v1` remains frozen.
 
-There is still no strong evidence that prompt tuning is the highest-value intervention. The project has repeatedly shown that deterministic evidence controls, ontology and evaluation quality matter more than prompt changes.
+The live challenge provides direct evidence that the deterministic boundary can override unsupported model output before it becomes an engineering value. The project still does not claim that every evidence class is solved; the demonstrated live guard currently covers the tested unit-evidence failure mode.
 
-The next live experiment should be a **new** frozen evaluation set, not a rerun of holdout_001 or holdout_002. It should specifically seek cases that can naturally trigger the SourceEvidenceGuard and new multilingual/assembly variants.
+The next milestone should move upward in engineering value rather than simply multiplying benchmark cases: connect validated `EngineeringSpec` values to a constrained CAD generator while preserving the same evidence/provenance boundary.
 
-A prompt_v2 should be created only if a genuine parser failure survives those deterministic controls.
+A prompt revision should still be introduced only when a genuine parser failure survives deterministic controls.
+
 
 ---
 
