@@ -6,6 +6,10 @@ import subprocess
 from app.config import LLMConfig
 from app.domain.intent import ParsedEngineeringIntent
 from app.evaluation.failures import classify_case
+from app.evaluation.evidence_guard_challenge import (
+    score_evidence_guard_case,
+    summarize_evidence_guard_challenge,
+)
 from app.evaluation.fingerprint import create_fingerprint
 from app.evaluation.metrics import score_case, summarize
 from app.evaluation.release_gate import evaluate_release_gate
@@ -55,6 +59,7 @@ def main():
 
     case_metrics = []
     classifications = []
+    evidence_guard_case_metrics = []
 
     for case in benchmark:
         raw_parsed: ParsedEngineeringIntent = parser.parse(case["prompt"])
@@ -80,6 +85,18 @@ def main():
         case_metrics.append(metrics)
         classifications.append(classification)
 
+        if "guard_targets" in case:
+            evidence_guard_case_metrics.append(
+                score_evidence_guard_case(
+                    case=case,
+                    raw_intent=raw_parsed,
+                    guarded_intent=parsed,
+                    guard_report=guard_report,
+                    spec=spec,
+                    actual_status=report.status.value,
+                )
+            )
+
         _write_json(
             output_dir / "cases" / f"{case['id']}.json",
             {
@@ -99,6 +116,12 @@ def main():
     summary = summarize(config.model, case_metrics)
     gate = evaluate_release_gate(summary, case_metrics, classifications)
 
+    challenge_summary = None
+    if evidence_guard_case_metrics:
+        challenge_summary = summarize_evidence_guard_challenge(
+            evidence_guard_case_metrics
+        )
+
     summary.release_gate_passed = gate.passed
 
     json_path, md_path = write_reports(
@@ -115,6 +138,19 @@ def main():
         output_dir / "release_gate.json",
         gate.model_dump(mode="json"),
     )
+
+    if challenge_summary is not None:
+        _write_json(
+            output_dir / "evidence_guard_cases.json",
+            [
+                item.model_dump(mode="json")
+                for item in evidence_guard_case_metrics
+            ],
+        )
+        _write_json(
+            output_dir / "evidence_guard_challenge.json",
+            challenge_summary.model_dump(mode="json"),
+        )
 
     fingerprint = create_fingerprint(
         run_id=run_id,
@@ -151,6 +187,11 @@ def main():
             "schema_version": schema_version,
             "case_count": len(benchmark),
             "release_gate_passed": gate.passed,
+            "evidence_guard_challenge": (
+                challenge_summary.model_dump(mode="json")
+                if challenge_summary is not None
+                else None
+            ),
         },
     )
 
@@ -162,10 +203,16 @@ def main():
     print(f"Wrote {output_dir / 'release_gate.json'}")
     print(f"Wrote {output_dir / 'fingerprint.json'}")
     print(f"Wrote {output_dir / 'run_manifest.json'}")
+    if challenge_summary is not None:
+        print(challenge_summary.model_dump_json(indent=2))
+        print(f"Wrote {output_dir / 'evidence_guard_cases.json'}")
+        print(f"Wrote {output_dir / 'evidence_guard_challenge.json'}")
     print(f"Wrote per-case traces under {output_dir / 'cases'}")
 
     if not gate.passed:
         raise SystemExit(2)
+    if challenge_summary is not None and not challenge_summary.safety_passed:
+        raise SystemExit(3)
 
 
 if __name__ == "__main__":
