@@ -4,20 +4,31 @@ from typing import Any
 
 
 def _key(value: Any) -> str:
-    return " ".join(str(value).strip().lower().replace("_", " ").split())
+    text = str(value).strip().lower().replace("_", " ").replace("-", " ")
+    return " ".join(text.split())
 
 
 COMPONENT_ALIASES = {
     "bracket": "pipe_bracket",
     "pipe bracket": "pipe_bracket",
     "wall bracket": "pipe_bracket",
+    "pipe clamp bracket": "pipe_bracket",
+    "pipe clamp": "pipe_bracket",
+    "halter": "pipe_bracket",
+    "rohrhalter": "pipe_bracket",
+    "rohr halter": "pipe_bracket",
+    "aluminiumhalter": "pipe_bracket",
+    "aluminium halter": "pipe_bracket",
+    "stahl rohrhalter": "pipe_bracket",
 }
 
 MATERIAL_ALIASES = {
     "steel": "steel",
+    "stahl": "steel",
     "aluminium": "aluminium",
     "aluminum": "aluminium",
     "polymer": "polymer",
+    "kunststoff": "polymer",
 }
 
 HOLE_SEMANTIC_ALIASES = {
@@ -25,9 +36,13 @@ HOLE_SEMANTIC_ALIASES = {
     "clearance hole": "clearance",
     "clearance holes": "clearance",
     "clearance-hole": "clearance",
+    "durchgangsbohrung": "clearance",
+    "durchgangsbohrungen": "clearance",
     "threaded": "threaded",
     "threaded hole": "threaded",
     "threaded holes": "threaded",
+    "gewindebohrung": "threaded",
+    "gewindebohrungen": "threaded",
 }
 
 
