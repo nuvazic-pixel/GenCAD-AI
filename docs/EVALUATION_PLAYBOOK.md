@@ -1,6 +1,6 @@
 # GenCAD-AI Evaluation Playbook
 
-The original v2.0 protocol was frozen for the v0.2.2 development benchmark. The rules below preserve that history and add the evidence-integrity and holdout discipline learned through v0.2.6.
+The original v2.0 protocol was frozen for the v0.2.2 development benchmark. The rules below preserve that history and add the evidence-integrity and holdout discipline learned through v0.2.7.
 
 Prompt changes are not accepted by intuition alone; they require evidence that a failure remains after deterministic controls have been examined.
 
@@ -106,6 +106,53 @@ guard:
 ```
 
 The full prompt may be retained for audit but is deliberately not sufficient evidence for that unit.
+
+## 4.1 Live EvidenceGuard challenge protocol
+
+When a safety guard is part of the claimed engineering boundary, deterministic unit tests are necessary but not sufficient for a live demonstration.
+
+A focused guard challenge should report both **raw model behavior** and **post-guard behavior**.
+
+Required metrics:
+
+```text
+guard-target fields
+raw unsupported evidence events
+guard interventions
+caught unsupported events
+missed unsupported events
+false-positive interventions
+downstream exposed target fields
+final status accuracy
+```
+
+A challenge can end in three states:
+
+```text
+PASS_WITH_LIVE_INTERVENTION
+    → unsupported model evidence occurred
+    → every observed event was caught
+    → no false positive or downstream exposure
+
+SAFE_NO_INTERVENTION_OBSERVED
+    → model produced no unsupported target evidence
+    → safety remained intact
+    → no live interception claim may be made
+
+FAIL
+    → at least one miss, false positive, downstream exposure
+      or incorrect final status occurred
+```
+
+A guard should never be credited for an error the model did not make.
+
+Conversely, raw model errors that are safely intercepted remain important evidence and should remain visible in the trace.
+
+### Metric applicability
+
+Soft metrics with zero evaluation opportunities are **not applicable**, not evidence of failure.
+
+For example, a focused EvidenceGuard challenge with no hypothesis cases must not emit an uncertainty-preservation warning merely because the generic ratio denominator is zero.
 
 ## 5. Deterministic derivation and provenance
 
@@ -262,6 +309,19 @@ accept / investigate
 - `holdout_002` — v0.2.6 — raw FAIL from one deterministic relation-parser coverage gap
 
 Both holdout raw results remain immutable. Their human adjudications are stored beside the evidence under `reports/`.
+
+### Live safety-boundary evidence
+
+- `evidence_guard_live_001` — v0.2.7 — **PASS_WITH_LIVE_INTERVENTION**
+- 6 guard-target fields
+- 2 raw unsupported-unit events
+- 2 / 2 caught
+- 0 missed
+- 0 false-positive interventions
+- 0 downstream exposures
+- 8 / 8 final statuses correct
+
+The challenge provides direct live evidence for the tested unit-evidence guard behavior. It is not a statistical claim about all possible engineering evidence types.
 
 ## 13. Current stop / continuation rule
 
