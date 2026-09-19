@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field
 from app.domain.evidence import EvidenceState
 from app.domain.intent import ParsedEngineeringIntent, ParsedField
 from app.domain.spec import EngineeringSpec
+from app.pipeline.evidence_guard import unexpected_association_is_supported
 from app.pipeline.normalizer import canonical_field
 from app.pipeline.validation import ValidationReport
 
@@ -197,16 +198,24 @@ def classify_case(
                 )
 
         elif expected.state == "unknown" and actual.state != "unknown":
-            failures.append(
-                FailureEvent(
-                    type=FailureType.HALLUCINATION,
-                    severity=_hallucination_severity(field_name),
-                    field=field_name,
-                    expected="unknown",
-                    actual=_field_snapshot(actual),
-                    details="Model populated a field absent from calibrated benchmark ground truth.",
+            supported_association = (
+                field_name == "associated_fastener_designation"
+                and unexpected_association_is_supported(
+                    case["prompt"],
+                    actual_intent,
                 )
             )
+            if not supported_association:
+                failures.append(
+                    FailureEvent(
+                        type=FailureType.HALLUCINATION,
+                        severity=_hallucination_severity(field_name),
+                        field=field_name,
+                        expected="unknown",
+                        actual=_field_snapshot(actual),
+                        details="Model populated a field absent from calibrated benchmark ground truth.",
+                    )
+                )
 
     for trap in case.get("forbidden_inferences", []):
         if _semantic_trap_triggered(trap, spec):
