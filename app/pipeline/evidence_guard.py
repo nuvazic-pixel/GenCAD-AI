@@ -113,17 +113,19 @@ def relation_supports_hole_association(
         if segment.strip()
     ]
 
+    hole_word = r"(?:hole|holes|[a-zäöüß]*bohrung(?:en)?)"
+
     direct_pattern = re.compile(
         rf"\b{d}\b\s+"
         rf"(?:(?:clearance|threaded|mounting|befestigungs|gewinde|durchgangs)\s+)?"
-        rf"\b(?:hole|holes|bohrung|bohrungen)\b",
+        rf"\b{hole_word}\b",
         re.IGNORECASE,
     )
     relation_pattern = re.compile(
         rf"\b{d}\b.{{0,40}}"
         rf"\b(?:screw|screws|bolt|bolts|schraube|schrauben)\b"
         rf".{{0,60}}\b(?:through|into|durch|in)\b"
-        rf".{{0,80}}\b(?:hole|holes|bohrung|bohrungen)\b",
+        rf".{{0,80}}\b{hole_word}\b",
         re.IGNORECASE,
     )
 
