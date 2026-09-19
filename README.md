@@ -1,4 +1,4 @@
-# GenCAD-AI v0.2.5 — Frozen Holdout Evaluation
+# GenCAD-AI v0.2.6 — Evidence Integrity Layer
 
 ![tests](https://github.com/nuvazic-pixel/GenCAD-AI/actions/workflows/tests.yml/badge.svg)
 
@@ -18,7 +18,11 @@ Natural language
       ↓
 EngineeringParser
       ↓
-ParsedEngineeringIntent          probabilistic boundary
+Raw ParsedEngineeringIntent      probabilistic boundary
+      ↓
+SourceEvidenceGuard
+      ↓
+Guarded ParsedEngineeringIntent  evidence boundary
       ↓
 Normalizer
       ↓
@@ -84,6 +88,94 @@ Examples:
 ```
 
 CAD readiness is geometry-driven. A fully specified hole does not require the user to also claim that a physical fastener is present.
+
+## v0.2.6 — Evidence Integrity Layer
+
+The holdout evaluation exposed a failure mode that prompt instructions alone cannot safely control: the model may attach an engineering unit that is not supported by the cited source phrase.
+
+v0.2.6 adds a deterministic `SourceEvidenceGuard` between parser output and engineering normalization.
+
+```text
+raw model output
+    ↓
+field-level evidence check
+    ↓
+unsupported unit?
+    ├── yes → strip unit, preserve raw value, record finding
+    └── no  → pass through unchanged
+```
+
+Example:
+
+```text
+source_text = "Ø42 pipe"
+raw_value   = 42
+raw_unit    = "mm"
+
+SourceEvidenceGuard:
+"mm" is not supported by source_text
+
+        ↓
+
+guarded raw_value = 42
+guarded raw_unit  = null
+
+        ↓
+
+no physical LengthValue can be produced
+        ↓
+NEEDS_CLARIFICATION
+```
+
+The full prompt is deliberately **not** used as unit evidence. A separate phrase such as `4 mm wall` must not justify `Ø42 → 42 mm`.
+
+Every live case trace now preserves both:
+
+```text
+raw_parsed_intent
+parsed_intent             ← guarded intent
+source_evidence_guard
+engineering_spec
+validation_report
+failures
+metrics
+```
+
+This keeps model behavior auditable while preventing unsupported evidence from reaching engineering truth.
+
+### Multilingual deterministic terminology
+
+v0.2.6 also expands deterministic terminology resolution for phrases observed outside the development benchmark, including examples such as:
+
+```text
+Halter / Rohrhalter / Pipe clamp bracket → pipe_bracket
+Stahl                                  → steel
+Kunststoff                             → polymer
+Durchgangsbohrung(en)                  → clearance
+Gewindebohrung(en)                     → threaded
+```
+
+### Explicit assembly association
+
+When the source explicitly relates a physical fastener to a hole, the deterministic layer may create an associated designation using rule:
+
+```text
+ASSEMBLY_ASSOCIATION_V1
+```
+
+For example:
+
+```text
+"M6 screws through two 6.6 mm clearance holes"
+
+physical fastener designation = CONFIRMED M6
+
+        ↓ explicit source relation
+
+associated fastener designation = DERIVED M6
+```
+
+The derived value carries deterministic provenance. The LLM itself is still prohibited from producing `DERIVED` evidence.
 
 ## Safety invariants
 
@@ -163,6 +255,29 @@ Human adjudication found three distinct categories:
 
 The raw holdout remains frozen and the official gate remains FAIL. Human review is documented separately rather than rewriting the observed result.
 
+### Frozen holdout_002
+
+After the Evidence Integrity Layer was implemented, a second completely separate 15-case holdout was frozen and run.
+
+| Run | Cases | Recall | Hallucination | Semantic confusion | Unsafe proceed | Correct READY | Gate |
+|---|---:|---:|---:|---:|---:|---:|---|
+| holdout_002 | 15 | **100%** | 0.84% | 0% | **0%** | **100%** | **FAIL** |
+
+The raw hard-gate failure came from one case, J06:
+
+```text
+"M6 Schrauben durch ... Durchgangsbohrungen"
+```
+
+The model output was source-supported, but the deterministic relation recognizer did not yet understand the German compound noun `Durchgangsbohrungen`. The raw run therefore classified the associated M6 designation as a critical hallucination.
+
+That result remains officially **FAIL**. Post-run human adjudication identified it as a deterministic evaluator coverage gap, and the recognizer was subsequently generalized to compound `*bohrung/*bohrungen` words. The frozen holdout itself was not modified or rerun as if the original result had passed.
+
+Two additional points matter:
+
+- multilingual terminology resolution worked on unseen wording such as `Rohrhalter`, `Stahl`, and `Kunststoff`;
+- the SourceEvidenceGuard was **not triggered live** in holdout_002 because the model correctly left `Ø54` and `Ø48` unitless. Its interception behavior is covered by deterministic CI tests, but a future live evaluation should include a naturally occurring guard intervention before claiming live guard effectiveness.
+
 The prompt SHA-256 remained:
 
 ```text
@@ -181,6 +296,8 @@ See:
 - [002 → 003 calibration](reports/CALIBRATION_002_TO_003.md)
 - [holdout_001 evidence](reports/holdout_001/)
 - [holdout_001 human adjudication](reports/holdout_001/ADJUDICATION.md)
+- [holdout_002 evidence](reports/holdout_002/)
+- [holdout_002 human adjudication](reports/holdout_002/ADJUDICATION.md)
 
 ## Benchmark
 
@@ -250,22 +367,36 @@ case metrics
 
 ## Current status
 
-The known 25-case development benchmark reaches 100%, but the frozen 15-case holdout does **not**.
+The project now has three distinct layers of evidence:
 
-That is the useful result: the evaluation detected that the calibrated system had not yet generalized perfectly.
+```text
+known development benchmark
+    → 100% after calibration
 
-### Next remediation
+holdout_001
+    → exposed terminology, evidence-boundary and adjudication gaps
 
-Do **not** tune `prompt_v1` first.
+v0.2.6 Evidence Integrity Layer
+    → deterministic remediation
 
-The evidence points to deterministic improvements before prompt engineering:
+holdout_002
+    → 100% recall
+    → 100% READY accuracy
+    → 0% unsafe proceed
+    → raw FAIL from one deterministic relation-parser coverage gap
+```
 
-1. expand multilingual and phrase-level `TerminologyResolver` aliases
-2. add a source-evidence guard that rejects extracted units not supported by the source phrase
-3. formalize when an explicit physical fastener also establishes a hole-associated designation
-4. preserve `holdout_001` unchanged and validate remediation on a new benchmark/run
+That last gap has been patched and regression-tested without rewriting or retroactively passing the frozen holdout.
 
-Only residual failures that survive those deterministic controls should justify `prompt_v2`.
+### Current decision
+
+`prompt_v1` remains frozen.
+
+There is still no strong evidence that prompt tuning is the highest-value intervention. The project has repeatedly shown that deterministic evidence controls, ontology and evaluation quality matter more than prompt changes.
+
+The next live experiment should be a **new** frozen evaluation set, not a rerun of holdout_001 or holdout_002. It should specifically seek cases that can naturally trigger the SourceEvidenceGuard and new multilingual/assembly variants.
+
+A prompt_v2 should be created only if a genuine parser failure survives those deterministic controls.
 
 ---
 
