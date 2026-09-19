@@ -200,3 +200,30 @@ def test_fingerprint_identity_is_stable_for_same_inputs():
     assert first.benchmark_hash == second.benchmark_hash
     assert first.schema_hash == second.schema_hash
     assert first.fingerprint_id == second.fingerprint_id
+
+
+def test_release_gate_does_not_warn_on_zero_uncertainty_denominator():
+    summary = _summary(
+        explicit_fact_recall=1.0,
+        hallucinated_field_rate=0.0,
+        uncertainty_preservation=0.0,
+        correct_ready_rate=1.0,
+    )
+    metrics = [
+        CaseMetrics(
+            case_id="EG-fixture",
+            expected_status="needs_clarification",
+            actual_status="needs_clarification",
+            uncertainty_total=0,
+            uncertainty_preserved=0,
+        )
+    ]
+    classifications = [CaseClassification(case_id="EG-fixture")]
+
+    gate = evaluate_release_gate(
+        summary,
+        metrics,
+        classifications,
+    )
+
+    assert "Uncertainty Preservation below 95%." not in gate.soft_target_warnings
