@@ -1,122 +1,245 @@
-# GenCAD-AI v0.2.2 — Real LLM Evaluation
+# GenCAD-AI v0.2.4 — Safety-First Engineering Intent for Generative CAD
 
-v0.2.2 connects a real model to the benchmark-first engineering pipeline.
+![tests](https://github.com/nuvazic-pixel/GenCAD-AI/actions/workflows/tests.yml/badge.svg)
 
-## Hard boundary
+GenCAD-AI is an engineering prototype for converting natural-language design requests into a typed, validated engineering intent before any CAD geometry is generated.
 
-The LLM produces only `ParsedEngineeringIntent`.
+The project focuses on the safety boundary between probabilistic language-model interpretation and deterministic engineering logic.
 
-It does **not** produce `EngineeringSpec`, standards-derived dimensions, CAD geometry,
-or `DERIVED` evidence.
+> **Current scope:** engineering-intent extraction, normalization, terminology resolution, validation and reproducible evaluation.  
+> Production CAD/CAE generation is a later stage; this repository does not claim that an LLM directly produces engineering-safe CAD.
+
+## Core principle
+
+**The LLM interprets. Deterministic code decides engineering truth.**
 
 ```text
 Natural language
-    ↓
+      ↓
 EngineeringParser
-    ↓
-ParsedEngineeringIntent       ← probabilistic boundary
-    ↓
-EngineeringSpecBuilder
-    ↓
+      ↓
+ParsedEngineeringIntent          probabilistic boundary
+      ↓
 Normalizer
-    ↓
-EngineeringSpec               ← deterministic boundary
-    ↓
-Validation
+      ↓
+TerminologyResolver
+      ↓
+EngineeringSpec                  deterministic boundary
+      ↓
+Validator / Release Gate
+      ↓
+future CAD / CAE generation
 ```
 
-## Reference provider
+The model is not allowed to create `DERIVED` engineering evidence. Missing information remains unknown until an explicit deterministic resolver, standard, or calculation supplies it.
 
-The initial reference adapter uses OpenAI's Responses API with strict JSON Schema
-structured output. The provider interface remains replaceable.
+## Evidence model
 
-Default reference model:
+Engineering values distinguish:
 
-`gpt-5.6-sol`
+- `CONFIRMED` — explicitly supported by the source
+- `DERIVED` — deterministically calculated or resolved downstream
+- `HYPOTHESIS` — uncertain interpretation; never CAD-ready by itself
+- `UNKNOWN` — missing information
 
-This is an evaluation baseline, not a permanent vendor dependency.
+For parser output, `UNKNOWN` enforces:
+
+```text
+raw_value = null
+raw_unit = null
+confidence = 0
+```
+
+## v0.2.4 — Hole / assembly semantics
+
+A major calibration finding was that a phrase such as `M6 hole` does not assert that a physical M6 screw exists.
+
+The schema therefore separates:
+
+```text
+fastener_designation
+fastener_count
+
+associated_fastener_designation
+hole_count
+hole_diameter
+hole_semantics
+```
+
+Examples:
+
+```text
+"two M6 screws"
+→ physical fastener designation + physical fastener count
+
+"two M6 mounting holes"
+→ associated fastener designation + hole count
+
+"6.6 mm hole diameter"
+→ explicit hole geometry
+
+"M6 clearance holes"
+→ M6 association + clearance semantics
+→ no hole diameter is silently derived
+```
+
+CAD readiness is geometry-driven. A fully specified hole does not require the user to also claim that a physical fastener is present.
+
+## Safety invariants
+
+GenCAD-AI intentionally rejects common unsafe shortcuts:
+
+```text
+DN50 ≠ Ø50 mm
+M6 ≠ automatic clearance-hole diameter
+threaded hole ≠ clearance hole
+missing unit ≠ mm
+two holes ≠ two fasteners
+qualitative "strong" ≠ engineering load
+steel ≠ automatic steel grade
+```
+
+## Evaluation framework
+
+The repository includes a deterministic evaluation-control layer:
+
+- `FailureClassifier`
+- `BenchmarkComparator`
+- `ReleaseGate`
+- experiment fingerprinting
+- per-case audit traces
+- regression protection
+- GitHub Actions CI on Python 3.11 and 3.12
+
+Failure classification is deterministic; an LLM is not used to judge another LLM.
+
+### Hard gates
+
+All must remain zero:
+
+```text
+Unsafe Proceed
+Critical Hallucinations
+Critical Semantic Errors
+Positive-Control Regressions
+```
+
+### Soft targets
+
+```text
+Explicit Fact Recall       >= 95%
+Uncertainty Preservation   >= 95%
+Correct READY Rate         >= 90%
+Hallucinated Field Rate    <= 1%
+```
+
+## Experiment history
+
+The same system prompt, `prompt_v1`, was preserved across all three live runs.
+
+| Run | System version | Recall | Hallucination | Semantic confusion | Unsafe proceed | Correct READY | Gate |
+|---|---|---:|---:|---:|---:|---:|---|
+| baseline_001 | v0.2.2 | 85.39% | 3.43% | 3.23% | 0% | 40% | FAIL |
+| baseline_002 | v0.2.3 | 94.38% | 0.39% | 0% | 0% | 80% | PASS |
+| baseline_003 | v0.2.4 | 100% | 0% | 0% | 0% | 100% | PASS |
+
+These numbers are **calibration results on the known 25-case development benchmark**, not evidence that the model itself improved and not proof of generalization.
+
+The prompt SHA-256 remained:
+
+```text
+ca2dab42a10ad69812dcc30ac565f2830d76fc55fb4ba5e2c66faad9119a3e4d
+```
+
+Experiment evidence is preserved under [reports/](reports/).
+
+See:
+
+- [Evaluation Playbook](docs/EVALUATION_PLAYBOOK.md)
+- [baseline_001 evidence](reports/baseline_001/)
+- [baseline_002 evidence](reports/baseline_002/)
+- [baseline_003 evidence](reports/baseline_003/)
+- [001 → 002 calibration](reports/CALIBRATION_001_TO_002.md)
+- [002 → 003 calibration](reports/CALIBRATION_002_TO_003.md)
 
 ## Benchmark
 
-`benchmarks/cases.py`
+The development benchmark contains:
 
-- 20 adversarial / ambiguity cases
-- 5 positive controls
+```text
+20 adversarial / ambiguity cases
+ 5 positive controls
+25 total
+```
 
-Positive controls are essential: a parser that marks everything `UNKNOWN` is safe but useless.
+Historical benchmark versions remain frozen:
 
-## Metrics
-
-- Explicit Fact Recall
-- Hallucinated Field Rate
-- Uncertainty Preservation
-- Semantic Confusion Rate
-- Unsafe Proceed Rate
-- Correct READY Rate (secondary anti-overblocking metric)
-
-## Release gate
-
-v0.2.2 fails the release gate if:
-
-- `Unsafe Proceed Rate > 0`, or
-- any encoded semantic safety trap is violated.
+```text
+v0.2.2  original benchmark
+v0.2.3  normalization / uncertainty calibration
+v0.2.4  hole / assembly semantics calibration
+```
 
 ## Run deterministic tests
 
 ```bash
-pip install -r requirements.txt
+python -m pip install -r requirements.txt
 pytest -q
 ```
 
-## Run real LLM benchmark
+## Run a live benchmark
 
-Set `OPENAI_API_KEY`, then:
+Set an OpenAI API key locally:
 
 ```bash
-python scripts/run_llm_benchmark.py
+export OPENAI_API_KEY="..."
+python -m scripts.run_llm_benchmark
 ```
 
-Outputs:
+Configuration is environment-based; the provider interface remains replaceable.
 
-- `reports/benchmark_report.json`
-- `reports/benchmark_report.md`
+GitHub Actions workflows use repository secrets. `OPENAI_API_KEY` is the recommended secret name; the repository owner setup also supports the legacy `GENCAD` secret.
 
-The benchmark runner exits with code `2` if the safety release gate fails.
+## Reproducibility
 
-## Evaluation control layer
+Every live run records:
 
-The v0.2.2 evaluation protocol is frozen and implemented in code:
+```text
+run ID
+provider
+model
+prompt version + SHA-256
+benchmark version + SHA-256
+schema version + SHA-256
+git commit
+Python version
+UTC timestamp
+fingerprint ID
+```
 
-- deterministic `FailureClassifier`
-- `BenchmarkComparator`
-- hard/soft `ReleaseGate`
-- immutable experiment fingerprinting
-- case-level regression protection
+Per-case traces record:
 
-See [docs/EVALUATION_PLAYBOOK.md](docs/EVALUATION_PLAYBOOK.md).
+```text
+source prompt
+ParsedEngineeringIntent
+EngineeringSpec
+ValidationReport
+failure classification
+case metrics
+```
 
-Each live benchmark run is stored in a dedicated directory such as
-`reports/baseline_001/`, including the benchmark report, classified failures,
-release-gate decision, and experiment fingerprint.
+## Current status
 
-## Run the official live baseline
+v0.2.4 achieves a perfect score on the **known development benchmark** while preserving all hard safety gates.
 
-The frozen first live experiment is executed through GitHub Actions:
+That is the end of the known-benchmark calibration phase.
 
-1. Add a repository Actions secret named `OPENAI_API_KEY`.
-2. Open **Actions → GenCAD-AI baseline_001 → Run workflow**.
-3. Download the `gencad-ai-baseline-001` artifact after the run.
+### Next validation
 
-The workflow fixes:
+Before `prompt_v2` or any generalization claim, the next step is a **frozen holdout benchmark with unseen wording and combinations**.
 
-- provider: `openai`
-- model: `gpt-5.6-sol`
-- prompt: `v1`
-- benchmark: `v0.2.2`
-- run ID: `baseline_001`
+If the holdout exposes genuine parser failures, prompt changes will be minimal and evidence-driven.
 
-It uploads the benchmark report, classified failures, release-gate decision,
-experiment fingerprint, and runner log even when the release gate fails.
+---
 
-Do not edit `prompt_v1` based on individual cases before preserving this baseline.
-
+GenCAD-AI is deliberately built as an engineering-control system around probabilistic AI rather than as a demo that assumes model output is engineering truth.
