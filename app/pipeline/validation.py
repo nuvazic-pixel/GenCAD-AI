@@ -25,14 +25,16 @@ def validate_spec(spec: EngineeringSpec) -> ValidationReport:
     failed = []
     warnings = list(spec.warnings)
 
+    # CAD readiness is geometry-driven. Physical fastener fields are optional
+    # unless a later manufacturing/assembly stage explicitly requires them.
     fields = {
         "component": spec.component,
         "pipe_diameter": spec.pipe_diameter,
         "wall_thickness": spec.wall_thickness,
         "bracket_width": spec.bracket_width,
         "base_thickness": spec.base_thickness,
-        "fastener_designation": spec.fastener_designation,
         "hole_count": spec.hole_count,
+        "hole_diameter": spec.hole_diameter,
         "material": spec.material,
     }
 
