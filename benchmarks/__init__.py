@@ -1,6 +1,7 @@
 from .cases import BENCHMARK as BENCHMARK_V022
 from .cases_v023 import BENCHMARK as BENCHMARK_V023
 from .cases_v024 import BENCHMARK as BENCHMARK_V024
+from .holdout_v025 import HOLDOUT as HOLDOUT_V025
 
 
 def get_benchmark(version: str):
@@ -10,6 +11,8 @@ def get_benchmark(version: str):
         return BENCHMARK_V023
     if version == "0.2.4":
         return BENCHMARK_V024
+    if version == "0.2.5-holdout":
+        return HOLDOUT_V025
     raise ValueError(f"Unsupported benchmark version: {version}")
 
 
