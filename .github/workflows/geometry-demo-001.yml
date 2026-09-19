@@ -1,0 +1,52 @@
+name: GenCAD-AI geometry_demo_001
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".geometry_demo_001_trigger"
+
+jobs:
+  geometry:
+    runs-on: ubuntu-latest
+
+    env:
+      GENCAD_GIT_COMMIT: ${{ github.sha }}
+      GENCAD_GEOMETRY_OUTPUT: reports/geometry_demo_001
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install GenCAD-AI CAD extras
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[cad]"
+
+      - name: Run proof-to-geometry A/B demo
+        run: |
+          python -m scripts.run_geometry_demo
+
+      - name: Verify blocked/generated artifact boundary
+        shell: bash
+        run: |
+          test -f reports/geometry_demo_001/scenario_A_blocked/trace.json
+          test ! -e reports/geometry_demo_001/scenario_A_blocked/pipe_saddle_bracket.step
+          test ! -e reports/geometry_demo_001/scenario_A_blocked/pipe_saddle_bracket.stl
+
+          test -s reports/geometry_demo_001/scenario_B_generated/pipe_saddle_bracket.step
+          test -s reports/geometry_demo_001/scenario_B_generated/pipe_saddle_bracket.stl
+          test -s reports/geometry_demo_001/scenario_B_generated/generation_manifest.json
+          test -s reports/geometry_demo_001/scenario_B_generated/trace.json
+          test -s reports/geometry_demo_001/demo_summary.json
+
+      - name: Upload geometry proof
+        uses: actions/upload-artifact@v4
+        with:
+          name: gencad-ai-geometry-demo-001
+          path: reports/geometry_demo_001/
+          if-no-files-found: error
+          retention-days: 90
