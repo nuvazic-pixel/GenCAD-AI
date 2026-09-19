@@ -1,0 +1,10 @@
+[
+  {"case_id":"EG01","guard_targets":["pipe_diameter"],"raw_unsupported_unit_fields":["pipe_diameter"],"caught_fields":["pipe_diameter"],"missed_fields":[],"false_positive_fields":[],"downstream_exposed_fields":[],"expected_status":"needs_clarification","actual_status":"needs_clarification"},
+  {"case_id":"EG02","guard_targets":["pipe_diameter"],"raw_unsupported_unit_fields":[],"caught_fields":[],"missed_fields":[],"false_positive_fields":[],"downstream_exposed_fields":[],"expected_status":"needs_clarification","actual_status":"needs_clarification"},
+  {"case_id":"EG03","guard_targets":["pipe_diameter"],"raw_unsupported_unit_fields":[],"caught_fields":[],"missed_fields":[],"false_positive_fields":[],"downstream_exposed_fields":[],"expected_status":"needs_clarification","actual_status":"needs_clarification"},
+  {"case_id":"EG04","guard_targets":["bracket_width"],"raw_unsupported_unit_fields":[],"caught_fields":[],"missed_fields":[],"false_positive_fields":[],"downstream_exposed_fields":[],"expected_status":"needs_clarification","actual_status":"needs_clarification"},
+  {"case_id":"EG05","guard_targets":["hole_diameter"],"raw_unsupported_unit_fields":["hole_diameter"],"caught_fields":["hole_diameter"],"missed_fields":[],"false_positive_fields":[],"downstream_exposed_fields":[],"expected_status":"needs_clarification","actual_status":"needs_clarification"},
+  {"case_id":"EG06","guard_targets":["pipe_diameter"],"raw_unsupported_unit_fields":[],"caught_fields":[],"missed_fields":[],"false_positive_fields":[],"downstream_exposed_fields":[],"expected_status":"needs_clarification","actual_status":"needs_clarification"},
+  {"case_id":"EG07","guard_targets":[],"raw_unsupported_unit_fields":[],"caught_fields":[],"missed_fields":[],"false_positive_fields":[],"downstream_exposed_fields":[],"expected_status":"ready","actual_status":"ready"},
+  {"case_id":"EG08","guard_targets":[],"raw_unsupported_unit_fields":[],"caught_fields":[],"missed_fields":[],"false_positive_fields":[],"downstream_exposed_fields":[],"expected_status":"ready","actual_status":"ready"}
+]
