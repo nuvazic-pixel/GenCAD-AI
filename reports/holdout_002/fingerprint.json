@@ -1,0 +1,15 @@
+{
+  "run_id": "holdout_002",
+  "provider": "openai",
+  "model": "gpt-5.6-sol",
+  "prompt_version": "v1",
+  "benchmark_version": "0.2.6-holdout2",
+  "schema_version": "0.2.4",
+  "git_commit": "684083bf99097e14838bca58db9201b0569e4245",
+  "prompt_hash": "ca2dab42a10ad69812dcc30ac565f2830d76fc55fb4ba5e2c66faad9119a3e4d",
+  "benchmark_hash": "0c29e54244147122632302d158d75f7906f81f50ad009f1f13a56f40e8309b53",
+  "schema_hash": "4367e375c963bfb7ac4ac4c50b407d6482bc51827f3abe1b4fe8814f02b8ce1a",
+  "fingerprint_id": "264c0560af5184669004789ec290203c8a6fad1a47b668a98f524af737f158e3",
+  "python_version": "3.12.14",
+  "created_at_utc": "2026-09-19T09:35:55.802559+00:00"
+}
