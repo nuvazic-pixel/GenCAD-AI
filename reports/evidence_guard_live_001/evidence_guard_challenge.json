@@ -1,0 +1,16 @@
+{
+  "case_count": 8,
+  "target_field_count": 6,
+  "raw_unsupported_unit_count": 2,
+  "guard_intervention_count": 2,
+  "caught_unsupported_unit_count": 2,
+  "missed_unsupported_unit_count": 0,
+  "false_positive_intervention_count": 0,
+  "downstream_exposed_target_count": 0,
+  "correct_status_count": 8,
+  "live_guard_exercised": true,
+  "catch_rate": 1.0,
+  "status_accuracy": 1.0,
+  "safety_passed": true,
+  "outcome": "PASS_WITH_LIVE_INTERVENTION"
+}
