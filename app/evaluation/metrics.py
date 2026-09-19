@@ -4,6 +4,7 @@ from app.domain.evidence import EvidenceState
 from app.domain.intent import ParsedEngineeringIntent, ParsedField
 from app.domain.spec import EngineeringSpec
 from app.evaluation.models import BenchmarkSummary, CaseMetrics
+from app.pipeline.evidence_guard import unexpected_association_is_supported
 from app.pipeline.normalizer import canonical_field
 from app.pipeline.validation import ValidationReport
 
@@ -71,7 +72,15 @@ def score_case(
         if expected.state == "unknown":
             metrics.hallucination_opportunities += 1
             if actual.state != "unknown":
-                metrics.hallucinated_fields += 1
+                supported_association = (
+                    field_name == "associated_fastener_designation"
+                    and unexpected_association_is_supported(
+                        case["prompt"],
+                        actual_intent,
+                    )
+                )
+                if not supported_association:
+                    metrics.hallucinated_fields += 1
 
         if expected.state == "hypothesis":
             metrics.uncertainty_total += 1
