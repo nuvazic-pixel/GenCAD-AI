@@ -109,21 +109,21 @@ def relation_supports_hole_association(
     # Split on sentence punctuation, but do not split decimal numbers such as 6.6.
     segments = [
         segment.strip()
-        for segment in re.split(r"(?<!\\d)[.!?](?!\\d)", text)
+        for segment in re.split(r"(?<!\d)[.!?](?!\d)", text)
         if segment.strip()
     ]
 
     direct_pattern = re.compile(
-        rf"\\b{d}\\b\\s+"
-        rf"(?:(?:clearance|threaded|mounting|befestigungs|gewinde|durchgangs)\\s+)?"
-        rf"\\b(?:hole|holes|bohrung|bohrungen)\\b",
+        rf"\b{d}\b\s+"
+        rf"(?:(?:clearance|threaded|mounting|befestigungs|gewinde|durchgangs)\s+)?"
+        rf"\b(?:hole|holes|bohrung|bohrungen)\b",
         re.IGNORECASE,
     )
     relation_pattern = re.compile(
-        rf"\\b{d}\\b.{{0,40}}"
-        rf"\\b(?:screw|screws|bolt|bolts|schraube|schrauben)\\b"
-        rf".{{0,60}}\\b(?:through|into|durch|in)\\b"
-        rf".{{0,80}}\\b(?:hole|holes|bohrung|bohrungen)\\b",
+        rf"\b{d}\b.{0,40}"
+        rf"\b(?:screw|screws|bolt|bolts|schraube|schrauben)\b"
+        rf".{0,60}\b(?:through|into|durch|in)\b"
+        rf".{0,80}\b(?:hole|holes|bohrung|bohrungen)\b",
         re.IGNORECASE,
     )
 
