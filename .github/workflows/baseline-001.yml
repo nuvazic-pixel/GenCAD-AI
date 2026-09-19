@@ -44,7 +44,7 @@ jobs:
         run: |
           mkdir -p reports/baseline_001
           set +e
-          python scripts/run_llm_benchmark.py 2>&1 | tee reports/baseline_001/runner.log
+          python -m scripts.run_llm_benchmark 2>&1 | tee reports/baseline_001/runner.log
           code=${PIPESTATUS[0]}
           echo "exit_code=$code" >> "$GITHUB_OUTPUT"
           exit 0
