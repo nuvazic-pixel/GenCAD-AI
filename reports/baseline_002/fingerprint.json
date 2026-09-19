@@ -1,0 +1,15 @@
+{
+  "run_id": "baseline_002",
+  "provider": "openai",
+  "model": "gpt-5.6-sol",
+  "prompt_version": "v1",
+  "benchmark_version": "0.2.3",
+  "schema_version": "0.2.3",
+  "git_commit": "1fc73f3c4b4be3b6878300c3da75cab221224698",
+  "prompt_hash": "ca2dab42a10ad69812dcc30ac565f2830d76fc55fb4ba5e2c66faad9119a3e4d",
+  "benchmark_hash": "d90c3b988c2fd455c00eb552ce29568c3608aff45f0989319392c9c58b2a84fa",
+  "schema_hash": "377b7daafca1c24b294d5799105f9b9eb8b00e0d6ae655f90a937a693bb0618d",
+  "fingerprint_id": "a016d2980856bb7f44328262892ef68e84b84d0ffb2ea7bb4831ee2eb64f5cb3",
+  "python_version": "3.12.14",
+  "created_at_utc": "2026-09-19T08:55:26.194537+00:00"
+}
