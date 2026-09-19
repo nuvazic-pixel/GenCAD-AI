@@ -1,0 +1,15 @@
+{
+  "run_id": "evidence_guard_live_001",
+  "provider": "openai",
+  "model": "gpt-5.6-sol",
+  "prompt_version": "v1",
+  "benchmark_version": "0.2.7-evidence-guard",
+  "schema_version": "0.2.4",
+  "git_commit": "041ab546d13a8bbc0d296b1433a23dc944cb0ffc",
+  "prompt_hash": "ca2dab42a10ad69812dcc30ac565f2830d76fc55fb4ba5e2c66faad9119a3e4d",
+  "benchmark_hash": "b21e36d138a3d8ff9d5c260e160b114a69296f01e7962ca628fdd718f66ea4f7",
+  "schema_hash": "4367e375c963bfb7ac4ac4c50b407d6482bc51827f3abe1b4fe8814f02b8ce1a",
+  "fingerprint_id": "9216206f19f6293e234c4f5dd63d6db66d7642285f7cdcb897d605a25e7ee08a",
+  "python_version": "3.12.14",
+  "created_at_utc": "2026-09-19T09:50:28.936651+00:00"
+}
