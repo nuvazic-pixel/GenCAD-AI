@@ -2,6 +2,7 @@ from app.domain.evidence import EvidenceState, EngineeringValue, Provenance
 from app.domain.intent import ParsedEngineeringIntent, ParsedField
 from app.domain.spec import ComponentType, EngineeringSpec, LengthValue, MaterialFamily
 from app.pipeline.normalizer import normalize_integer, normalize_length, normalize_number, normalize_unit
+from app.pipeline.evidence_guard import relation_supports_hole_association
 from app.pipeline.terminology import (
     normalize_component_term,
     normalize_hole_semantics,
@@ -68,6 +69,19 @@ def _string(field: ParsedField):
         state=_state(field),
         confidence=field.confidence,
         provenance=_prov(field),
+    )
+
+
+def _derived_string(value: str, *, rule_id: str, original_text: str):
+    return EngineeringValue(
+        value=value,
+        state=EvidenceState.DERIVED,
+        confidence=1.0,
+        provenance=Provenance(
+            source_type="calculation",
+            rule_id=rule_id,
+            original_text=original_text,
+        ),
     )
 
 
@@ -155,6 +169,23 @@ def build_engineering_spec(
     prompt: str,
     intent: ParsedEngineeringIntent,
 ) -> EngineeringSpec:
+    associated_fastener = _string(intent.associated_fastener_designation)
+    physical_fastener = _string(intent.fastener_designation)
+
+    if (
+        associated_fastener.state == EvidenceState.UNKNOWN
+        and physical_fastener.state == EvidenceState.CONFIRMED
+        and relation_supports_hole_association(
+            prompt,
+            str(physical_fastener.value),
+        )
+    ):
+        associated_fastener = _derived_string(
+            str(physical_fastener.value),
+            rule_id="ASSEMBLY_ASSOCIATION_V1",
+            original_text=prompt,
+        )
+
     spec = EngineeringSpec(
         component=_component(intent.component),
         pipe_diameter=_length(intent.pipe_diameter),
@@ -162,9 +193,9 @@ def build_engineering_spec(
         wall_thickness=_length(intent.wall_thickness),
         bracket_width=_length(intent.bracket_width),
         base_thickness=_length(intent.base_thickness),
-        fastener_designation=_string(intent.fastener_designation),
+        fastener_designation=physical_fastener,
         fastener_count=_integer(intent.fastener_count),
-        associated_fastener_designation=_string(intent.associated_fastener_designation),
+        associated_fastener_designation=associated_fastener,
         hole_count=_integer(intent.hole_count),
         hole_diameter=_length(intent.hole_diameter),
         hole_semantics=_hole_semantics(intent.hole_semantics),
