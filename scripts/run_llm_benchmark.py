@@ -43,10 +43,10 @@ def main():
     config = LLMConfig()
     parser = build_parser(config)
 
-    run_id = os.getenv("GENCAD_RUN_ID", "baseline_002")
+    run_id = os.getenv("GENCAD_RUN_ID", "baseline_003")
     prompt_version = os.getenv("GENCAD_PROMPT_VERSION", "v1")
-    benchmark_version = os.getenv("GENCAD_BENCHMARK_VERSION", "0.2.3")
-    schema_version = os.getenv("GENCAD_SCHEMA_VERSION", "0.2.3")
+    benchmark_version = os.getenv("GENCAD_BENCHMARK_VERSION", "0.2.4")
+    schema_version = os.getenv("GENCAD_SCHEMA_VERSION", "0.2.4")
 
     benchmark = get_benchmark(benchmark_version)
     output_dir = Path("reports") / run_id
@@ -130,7 +130,7 @@ def main():
         output_dir / "run_manifest.json",
         {
             "run_id": run_id,
-            "run_type": "evaluation_calibration" if run_id == "baseline_002" else "benchmark",
+            "run_type": "evaluation_calibration" if run_id in {"baseline_002", "baseline_003"} else "benchmark",
             "provider": config.provider,
             "model": config.model,
             "prompt_version": prompt_version,
