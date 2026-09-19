@@ -11,6 +11,7 @@ from app.evaluation.metrics import score_case, summarize
 from app.evaluation.release_gate import evaluate_release_gate
 from app.evaluation.report import write_reports
 from app.pipeline.builder import build_engineering_spec
+from app.pipeline.evidence_guard import apply_source_evidence_guard
 from app.pipeline.validation import validate_spec
 from app.providers.factory import build_parser
 from app.providers.prompt import SYSTEM_PROMPT
@@ -56,7 +57,11 @@ def main():
     classifications = []
 
     for case in benchmark:
-        parsed: ParsedEngineeringIntent = parser.parse(case["prompt"])
+        raw_parsed: ParsedEngineeringIntent = parser.parse(case["prompt"])
+        parsed, guard_report = apply_source_evidence_guard(
+            case["prompt"],
+            raw_parsed,
+        )
         spec = build_engineering_spec(case["prompt"], parsed)
         report = validate_spec(spec)
         classification = classify_case(
@@ -81,7 +86,9 @@ def main():
                 "case_id": case["id"],
                 "prompt": case["prompt"],
                 "expected_status": case["expected_status"],
+                "raw_parsed_intent": raw_parsed.model_dump(mode="json"),
                 "parsed_intent": parsed.model_dump(mode="json"),
+                "source_evidence_guard": guard_report.model_dump(mode="json"),
                 "engineering_spec": spec.model_dump(mode="json"),
                 "validation_report": report.model_dump(mode="json"),
                 "failures": classification.model_dump(mode="json")["failures"],
@@ -130,7 +137,13 @@ def main():
         output_dir / "run_manifest.json",
         {
             "run_id": run_id,
-            "run_type": "evaluation_calibration" if run_id in {"baseline_002", "baseline_003"} else "benchmark",
+            "run_type": (
+                "holdout_evaluation"
+                if run_id.startswith("holdout_")
+                else "evaluation_calibration"
+                if run_id in {"baseline_002", "baseline_003"}
+                else "benchmark"
+            ),
             "provider": config.provider,
             "model": config.model,
             "prompt_version": prompt_version,
