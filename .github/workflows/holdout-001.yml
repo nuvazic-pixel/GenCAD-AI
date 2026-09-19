@@ -2,9 +2,6 @@ name: GenCAD-AI holdout_001
 
 on:
   workflow_dispatch:
-  push:
-    paths:
-      - ".holdout_001_trigger"
 
 jobs:
   holdout:
