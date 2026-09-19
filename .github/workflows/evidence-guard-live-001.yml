@@ -2,9 +2,6 @@ name: GenCAD-AI evidence_guard_live_001
 
 on:
   workflow_dispatch:
-  push:
-    paths:
-      - ".evidence_guard_live_001_trigger"
 
 jobs:
   challenge:
