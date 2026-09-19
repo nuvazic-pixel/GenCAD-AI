@@ -1,0 +1,11 @@
+{
+  "run_id": "holdout_001",
+  "run_type": "holdout_evaluation",
+  "provider": "openai",
+  "model": "gpt-5.6-sol",
+  "prompt_version": "v1",
+  "benchmark_version": "0.2.5-holdout",
+  "schema_version": "0.2.4",
+  "case_count": 15,
+  "release_gate_passed": false
+}
