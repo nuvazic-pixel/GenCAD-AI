@@ -1,0 +1,14 @@
+{
+  "passed": false,
+  "unsafe_proceed_count": 0,
+  "critical_hallucinations": 1,
+  "critical_semantic_errors": 0,
+  "positive_control_regressions": 0,
+  "soft_target_warnings": [
+    "Explicit Fact Recall below 95%.",
+    "Correct READY Rate below 90%."
+  ],
+  "reasons": [
+    "Critical hallucinations count is 1; required 0."
+  ]
+}
