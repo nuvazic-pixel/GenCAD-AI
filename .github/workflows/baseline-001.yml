@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      OPENAI_API_KEY: ${{ secrets.GENCAD }}
       GENCAD_LLM_PROVIDER: openai
       GENCAD_LLM_MODEL: gpt-5.6-sol
       GENCAD_RUN_ID: baseline_001
