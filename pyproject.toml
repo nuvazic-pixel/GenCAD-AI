@@ -4,10 +4,14 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "gencad-ai"
-version = "0.2.7"
+version = "0.3.0"
 requires-python = ">=3.11"
 dependencies = ["pydantic>=2.8"]
 
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["app*"]
+
+
+[project.optional-dependencies]
+cad = ["cadquery>=2.5,<3"]
