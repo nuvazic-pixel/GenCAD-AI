@@ -1,0 +1,40 @@
+{
+  "generator": "GenCAD-AI",
+  "system_version": "0.3.0",
+  "generator_id": "pipe_saddle_bracket_v1",
+  "layout_rule_id": "PIPE_SADDLE_LAYOUT_V1",
+  "source_run_id": "geometry_demo_001",
+  "git_commit": "88d070f392fa4a2c841bbd952b03867226c13095",
+  "engineering_spec_hash": "2f47fbf46b9938064da3498cc8db3af3e720eec5313ac41281aeed70de468c33",
+  "cad_release_decision_hash": "1b6fb90c42385f78be18cc891c7dff794ab7cb395f2644392abfed98a1e8c6e9",
+  "cad_release_gate": "pass",
+  "validation_status": "ready",
+  "parameters": {
+    "pipe_diameter_mm": 42.0,
+    "wall_thickness_mm": 4.0,
+    "bracket_width_mm": 30.0,
+    "base_thickness_mm": 6.0,
+    "hole_count": 2,
+    "hole_diameter_mm": 6.6
+  },
+  "derived_layout": {
+    "base_length_mm": 76.4,
+    "base_depth_mm": 30.0,
+    "ring_inner_radius_mm": 21.0,
+    "ring_outer_radius_mm": 25.0,
+    "ring_center_z_mm": 27.0,
+    "left_hole_x_mm": -31.6,
+    "right_hole_x_mm": 31.6
+  },
+  "artifacts": {
+    "step": {
+      "file": "pipe_saddle_bracket.step",
+      "sha256": "d669964ba3c07a07cb3d23be5391dc9f117cba333c19b360a0491911772f85c6"
+    },
+    "stl": {
+      "file": "pipe_saddle_bracket.stl",
+      "sha256": "dceb932b537ff89cbacae6b7aaba0d50cfeb96af8fdd12e36faf2939555cdd73"
+    }
+  },
+  "note": "Full evidence_summary and generated_at_utc are preserved in the GitHub Actions artifact."
+}
