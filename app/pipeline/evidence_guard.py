@@ -120,10 +120,10 @@ def relation_supports_hole_association(
         re.IGNORECASE,
     )
     relation_pattern = re.compile(
-        rf"\b{d}\b.{0,40}"
+        rf"\b{d}\b.{{0,40}}"
         rf"\b(?:screw|screws|bolt|bolts|schraube|schrauben)\b"
-        rf".{0,60}\b(?:through|into|durch|in)\b"
-        rf".{0,80}\b(?:hole|holes|bohrung|bohrungen)\b",
+        rf".{{0,60}}\b(?:through|into|durch|in)\b"
+        rf".{{0,80}}\b(?:hole|holes|bohrung|bohrungen)\b",
         re.IGNORECASE,
     )
 
