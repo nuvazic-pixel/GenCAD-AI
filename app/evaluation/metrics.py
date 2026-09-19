@@ -1,12 +1,11 @@
 from __future__ import annotations
 
-from typing import Any
-
-from app.domain.intent import ParsedEngineeringIntent
 from app.domain.evidence import EvidenceState
+from app.domain.intent import ParsedEngineeringIntent, ParsedField
 from app.domain.spec import EngineeringSpec
+from app.evaluation.models import BenchmarkSummary, CaseMetrics
+from app.pipeline.normalizer import canonical_field
 from app.pipeline.validation import ValidationReport
-from app.evaluation.models import CaseMetrics, BenchmarkSummary
 
 
 INTENT_FIELDS = [
@@ -18,6 +17,7 @@ INTENT_FIELDS = [
     "base_thickness",
     "fastener_designation",
     "fastener_count",
+    "hole_count",
     "hole_diameter",
     "hole_semantics",
     "material",
@@ -26,10 +26,22 @@ INTENT_FIELDS = [
 ]
 
 
-def _normalized(v: Any) -> str:
-    if v is None:
-        return ""
-    return str(v).strip().lower()
+def _unknown_expected() -> dict:
+    return {
+        "raw_value": None,
+        "raw_unit": None,
+        "source_text": None,
+        "state": "unknown",
+        "confidence": 0.0,
+    }
+
+
+def _fields_match(
+    field_name: str,
+    expected: ParsedField,
+    actual: ParsedField,
+) -> bool:
+    return canonical_field(field_name, expected) == canonical_field(field_name, actual)
 
 
 def score_case(
@@ -46,29 +58,23 @@ def score_case(
     )
 
     for field_name in INTENT_FIELDS:
-        expected = expected_intent[field_name]
+        expected_payload = expected_intent.get(field_name, _unknown_expected())
+        expected = ParsedField.model_validate(expected_payload)
         actual = getattr(actual_intent, field_name)
 
-        expected_state = expected["state"]
-        actual_state = actual.state
-
-        if expected_state == "confirmed":
+        if expected.state == "confirmed":
             metrics.explicit_fact_total += 1
-            if (
-                actual_state == "confirmed"
-                and _normalized(actual.raw_value) == _normalized(expected["raw_value"])
-                and _normalized(actual.raw_unit) == _normalized(expected.get("raw_unit"))
-            ):
+            if actual.state == "confirmed" and _fields_match(field_name, expected, actual):
                 metrics.explicit_fact_correct += 1
 
-        if expected_state == "unknown":
+        if expected.state == "unknown":
             metrics.hallucination_opportunities += 1
-            if actual_state != "unknown" or actual.raw_value is not None:
+            if actual.state != "unknown":
                 metrics.hallucinated_fields += 1
 
-        if expected_state == "hypothesis":
+        if expected.state == "hypothesis":
             metrics.uncertainty_total += 1
-            if actual_state == "hypothesis":
+            if actual.state == "hypothesis":
                 metrics.uncertainty_preserved += 1
 
     forbidden = case.get("forbidden_inferences", [])
@@ -83,6 +89,10 @@ def score_case(
             confused = spec.clearance_hole_diameter.state != EvidenceState.UNKNOWN
         elif trap == "fastener_designation":
             confused = spec.fastener_designation.state != EvidenceState.UNKNOWN
+        elif trap == "fastener_count":
+            confused = spec.fastener_count.state != EvidenceState.UNKNOWN
+        elif trap == "hole_count":
+            confused = spec.hole_count.state != EvidenceState.UNKNOWN
         elif trap == "material":
             confused = spec.material.state != EvidenceState.UNKNOWN
         elif trap == "confirmed_material":
