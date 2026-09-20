@@ -1,0 +1,23 @@
+{
+  "verifier_version": "0.3.1",
+  "artifact_file": "pipe_saddle_bracket_faulty.stl",
+  "solid_valid": true,
+  "watertight": true,
+  "positive_volume": true,
+  "volume_mm3": 28678.039584562648,
+  "expected_hole_count": 2,
+  "detected_hole_count": 1,
+  "hole_count_match": false,
+  "expected_bbox_mm": [76.4, 30.0, 52.0],
+  "measured_bbox_mm": [76.4000015258789, 30.0, 51.99222946166992],
+  "dimensions_match": true,
+  "expected_pipe_diameter_mm": 42.0,
+  "measured_pipe_diameter_mm": 41.99564873692872,
+  "pipe_opening_match": true,
+  "expected_wall_mm": 4.0,
+  "measured_wall_mm": 3.994405093205561,
+  "wall_check_passed": true,
+  "geometry_fingerprint": "sha256:a31c46c184cab2f5a663ba5296c8f761ae582a12e635ffc1899957a621949dea",
+  "failed_rules": ["HOLE_COUNT_MISMATCH"],
+  "passed": false
+}
