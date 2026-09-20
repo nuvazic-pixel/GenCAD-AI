@@ -7,6 +7,14 @@ from .generator import (
 )
 from .models import CADReleaseDecision, CADReleaseStatus, ReleasedBracketParameters
 from .release_gate import evaluate_cad_release
+from .reproducibility import (
+    canonical_payload_hash,
+    evaluate_geometry_reproducibility,
+)
+from .reproducibility_models import (
+    GeometryBuildRecord,
+    GeometryReproducibilityReport,
+)
 from .verification import verify_bracket_stl
 from .verification_models import (
     CADArtifactReleaseDecision,
@@ -20,12 +28,16 @@ __all__ = [
     "CADArtifactReleaseStatus",
     "CADReleaseDecision",
     "CADReleaseStatus",
+    "GeometryBuildRecord",
+    "GeometryReproducibilityReport",
     "GeometryVerificationReport",
     "ReleasedBracketParameters",
     "build_pipe_saddle_bracket",
+    "canonical_payload_hash",
     "derive_layout",
     "evaluate_cad_artifact_release",
     "evaluate_cad_release",
+    "evaluate_geometry_reproducibility",
     "export_bracket",
     "verify_bracket_stl",
 ]
