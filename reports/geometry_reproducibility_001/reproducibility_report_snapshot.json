@@ -1,0 +1,23 @@
+{
+  "reproducibility_version": "0.3.2",
+  "generator_id": "pipe_saddle_bracket_v1",
+  "repeat_count": 5,
+  "released_parameters_hash": "sha256:dfb57cd99095436fde91439f2eb229c07e3f34c01641d97c2c178d72102041a3",
+  "layout_hash": "sha256:0dfcfd956b8e0e29680d556c4764f3158433db12f26d620f46c305c66174edd3",
+  "unique_geometry_fingerprints": [
+    "sha256:49da1af3e1ff71e08b47e1904117ad2b95e8852833ecfeeac9b3b438a2c14181"
+  ],
+  "unique_stl_sha256": [
+    "sha256:dceb932b537ff89cbacae6b7aaba0d50cfeb96af8fdd12e36faf2939555cdd73"
+  ],
+  "unique_step_sha256_count": 5,
+  "stl_bytes_identical": true,
+  "step_bytes_identical": false,
+  "all_verified": true,
+  "all_releasable": true,
+  "fingerprints_match": true,
+  "sensitivity_control_fingerprint": "sha256:795d0a9b7ca3029f660e27809add2a3627b7812380eb6f8436e4975d4117c2dc",
+  "sensitivity_control_differs": true,
+  "failed_rules": [],
+  "passed": true
+}
