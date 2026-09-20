@@ -1,0 +1,16 @@
+{
+  "good": {
+    "status": "pass",
+    "releasable": true,
+    "geometry_fingerprint": "sha256:49da1af3e1ff71e08b47e1904117ad2b95e8852833ecfeeac9b3b438a2c14181",
+    "failed_rules": [],
+    "route": "released"
+  },
+  "faulty_missing_hole": {
+    "status": "fail",
+    "releasable": false,
+    "geometry_fingerprint": "sha256:a31c46c184cab2f5a663ba5296c8f761ae582a12e635ffc1899957a621949dea",
+    "failed_rules": ["HOLE_COUNT_MISMATCH"],
+    "route": "quarantine"
+  }
+}
