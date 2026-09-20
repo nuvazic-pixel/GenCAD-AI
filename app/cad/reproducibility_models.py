@@ -23,6 +23,10 @@ class GeometryReproducibilityReport(BaseModel):
 
     builds: list[GeometryBuildRecord] = Field(default_factory=list)
     unique_geometry_fingerprints: list[str] = Field(default_factory=list)
+    unique_stl_sha256: list[str] = Field(default_factory=list)
+    unique_step_sha256: list[str] = Field(default_factory=list)
+    stl_bytes_identical: bool
+    step_bytes_identical: bool
 
     all_verified: bool
     all_releasable: bool
