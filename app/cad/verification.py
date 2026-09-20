@@ -30,10 +30,14 @@ def _require_trimesh():
     return trimesh
 
 
-def _canonical_mesh_fingerprint(mesh, *, decimals: int = 6) -> str:
+def canonical_triangle_fingerprint(
+    triangles,
+    *,
+    decimals: int = 6,
+) -> str:
     triangle_rows: list[str] = []
 
-    for triangle in mesh.triangles:
+    for triangle in triangles:
         vertices = sorted(
             tuple(round(float(coord), decimals) for coord in vertex)
             for vertex in triangle
@@ -47,6 +51,34 @@ def _canonical_mesh_fingerprint(mesh, *, decimals: int = 6) -> str:
 
     canonical = "\n".join(sorted(triangle_rows)).encode("utf-8")
     return "sha256:" + sha256(canonical).hexdigest()
+
+
+def _canonical_mesh_fingerprint(mesh, *, decimals: int = 6) -> str:
+    return canonical_triangle_fingerprint(
+        mesh.triangles,
+        decimals=decimals,
+    )
+
+
+def canonical_stl_fingerprint(
+    stl_path: str | Path,
+    *,
+    decimals: int = 6,
+) -> str:
+    trimesh = _require_trimesh()
+    loaded = trimesh.load_mesh(Path(stl_path), process=True)
+
+    if isinstance(loaded, trimesh.Scene):
+        if not loaded.geometry:
+            raise ValueError("Geometry artifact contains no mesh geometry")
+        mesh = trimesh.util.concatenate(tuple(loaded.geometry.values()))
+    else:
+        mesh = loaded
+
+    return _canonical_mesh_fingerprint(
+        mesh,
+        decimals=decimals,
+    )
 
 
 def _closed_loop_lengths(path) -> list[float]:
