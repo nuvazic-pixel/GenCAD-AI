@@ -1,4 +1,4 @@
-# GenCAD-AI v0.3.1 — Geometry Verification
+# GenCAD-AI v0.3.2 — Deterministic Geometry Reproducibility
 
 ![tests](https://github.com/nuvazic-pixel/GenCAD-AI/actions/workflows/tests.yml/badge.svg)
 
@@ -432,6 +432,81 @@ sha256:a31c46c184cab2f5a663ba5296c8f761ae582a12e635ffc1899957a621949dea
 
 This demonstrates that topological validity alone is insufficient for release.
 
+## v0.3.2 — Deterministic Geometry Reproducibility
+
+v0.3.2 asks a narrower question than geometry verification:
+
+> Do identical released engineering parameters repeatedly produce the same verified geometry?
+
+The reproducibility proof generated the same bracket **five independent times** using identical `ReleasedBracketParameters`.
+
+All five builds:
+
+- passed `GeometryVerifier`
+- passed `CADArtifactReleaseGate`
+- measured the same volume and bounding dimensions
+- produced one identical canonical geometry fingerprint
+
+Canonical geometry fingerprint:
+
+```text
+sha256:49da1af3e1ff71e08b47e1904117ad2b95e8852833ecfeeac9b3b438a2c14181
+```
+
+Result:
+
+```text
+repeat_count                  5
+unique_geometry_fingerprints  1
+all_verified                  true
+all_releasable                true
+fingerprints_match            true
+failed_rules                  []
+PASS                          true
+```
+
+### Geometry identity is not file-byte identity
+
+All five STL exports were byte-identical:
+
+```text
+stl_bytes_identical = true
+```
+
+The five STEP exports were **not** byte-identical:
+
+```text
+step_bytes_identical = false
+unique STEP hashes   = 5
+```
+
+Direct inspection showed non-geometric STEP serialization differences such as changing `FILE_NAME` timestamps and incrementing Open CASCADE translator product labels.
+
+Therefore GenCAD-AI deliberately uses a canonicalized mesh fingerprint for geometric identity rather than requiring byte-identical STEP serialization.
+
+### Sensitivity control
+
+A sixth build changed one released parameter:
+
+```text
+hole_diameter_mm
+6.6 → 7.0
+```
+
+The resulting fingerprint changed to:
+
+```text
+sha256:795d0a9b7ca3029f660e27809add2a3627b7812380eb6f8436e4975d4117c2dc
+```
+
+This guards against a fingerprint method that is accidentally insensitive to a meaningful geometry change.
+
+### Scope of the claim
+
+v0.3.2 demonstrates **intra-environment reproducibility** for the tested generator, dependency versions and tessellation settings.
+
+It does not yet claim cross-platform, cross-kernel or cross-version fingerprint stability.
+
 ## Safety invariants
 
 GenCAD-AI intentionally rejects common unsafe shortcuts:
@@ -557,6 +632,7 @@ See:
 - [EvidenceGuard live adjudication](reports/evidence_guard_live_001/ADJUDICATION.md)
 - [v0.3.0 proof-to-geometry evidence](reports/geometry_demo_001/)
 - [v0.3.1 geometry verification evidence](reports/geometry_verification_001/)
+- [v0.3.2 geometry reproducibility evidence](reports/geometry_reproducibility_001/)
 
 ## Benchmark
 
@@ -626,38 +702,41 @@ case metrics
 
 ## Current status
 
-GenCAD-AI now enforces three independent trust boundaries:
+GenCAD-AI now demonstrates four progressively stronger properties:
 
 ```text
-1. LLM output
-   → SourceEvidenceGuard
-   → unsupported evidence cannot become engineering truth
+1. Evidence integrity
+   unsupported LLM evidence is blocked
 
-2. EngineeringSpec
-   → CADReleaseGate
-   → UNKNOWN/HYPOTHESIS cannot become geometry parameters
+2. Geometry permission
+   only released engineering parameters may reach CAD
 
-3. CadQuery output
-   → GeometryVerifier + CADArtifactReleaseGate
-   → incorrect geometry cannot become a released artifact
+3. Artifact verification
+   valid-but-wrong geometry is quarantined
+
+4. Geometry reproducibility
+   identical released parameters repeatedly produce
+   the same canonical verified geometry fingerprint
 ```
 
-The v0.3.1 proof established:
+The v0.3.2 proof established:
 
-- a known-good exported STL is valid, watertight and dimensionally consistent;
-- expected hole count can be measured from the exported artifact;
-- pipe-opening diameter and wall geometry are measured independently from the mesh;
-- canonical geometry fingerprints distinguish good and faulty shapes;
-- a deliberate one-hole generator defect remains a valid watertight solid but is detected as `HOLE_COUNT_MISMATCH`;
-- the good candidate is routed to `released/`;
-- the faulty candidate is routed to `quarantine/`;
-- the release/quarantine boundary is enforced by GitHub Actions.
+- 5 independent repeated builds from identical released parameters;
+- 5 / 5 passed geometry verification;
+- 5 / 5 passed artifact release;
+- one unique canonical geometry fingerprint across all replicas;
+- byte-identical STL output in this run;
+- non-byte-identical STEP serialization without geometry divergence;
+- a one-parameter sensitivity control produced a different geometry fingerprint;
+- the reproducibility workflow is enforced in GitHub Actions.
 
 ### Current decision
 
-The next milestone should be **v0.3.2 — Deterministic Geometry Reproducibility**.
+The next scientifically useful step is **v0.3.3 — Cross-Environment Reproducibility**.
 
-It should generate the same released parameter set multiple times, canonicalize the resulting geometry and prove that the geometry fingerprint is stable across repeated builds. Byte-identical STEP files are not required; geometric/topological equivalence is the target.
+That experiment should run the same released parameters in separately provisioned environments (for example Python 3.11 and 3.12 jobs with pinned CAD dependencies), then compare canonical fingerprints across jobs.
+
+Until that is tested, v0.3.2 should be described precisely as **intra-environment deterministic geometry reproducibility**.
 
 
 ---
