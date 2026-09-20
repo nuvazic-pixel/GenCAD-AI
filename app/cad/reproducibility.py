@@ -39,6 +39,8 @@ def evaluate_geometry_reproducibility(
     fingerprints = sorted(
         {build.geometry_fingerprint for build in builds}
     )
+    stl_hashes = sorted({build.stl_sha256 for build in builds})
+    step_hashes = sorted({build.step_sha256 for build in builds})
 
     all_verified = all(build.verification_passed for build in builds)
     all_releasable = all(build.artifact_releasable for build in builds)
@@ -70,6 +72,10 @@ def evaluate_geometry_reproducibility(
         layout_hash=layout_hash,
         builds=builds,
         unique_geometry_fingerprints=fingerprints,
+        unique_stl_sha256=stl_hashes,
+        unique_step_sha256=step_hashes,
+        stl_bytes_identical=len(stl_hashes) == 1 and len(builds) > 0,
+        step_bytes_identical=len(step_hashes) == 1 and len(builds) > 0,
         all_verified=all_verified,
         all_releasable=all_releasable,
         fingerprints_match=fingerprints_match,
