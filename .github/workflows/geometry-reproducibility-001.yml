@@ -2,9 +2,6 @@ name: GenCAD-AI geometry_reproducibility_001
 
 on:
   workflow_dispatch:
-  push:
-    paths:
-      - ".geometry_reproducibility_001_trigger"
 
 jobs:
   reproduce-geometry:
