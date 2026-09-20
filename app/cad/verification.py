@@ -105,7 +105,7 @@ def verify_bracket_stl(
 
     trimesh = _require_trimesh()
     path = Path(stl_path)
-    loaded = trimesh.load_mesh(path, process=False)
+    loaded = trimesh.load_mesh(path, process=True)
 
     if isinstance(loaded, trimesh.Scene):
         if not loaded.geometry:
