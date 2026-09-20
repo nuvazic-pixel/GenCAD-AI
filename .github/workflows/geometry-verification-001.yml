@@ -2,9 +2,6 @@ name: GenCAD-AI geometry_verification_001
 
 on:
   workflow_dispatch:
-  push:
-    paths:
-      - ".geometry_verification_001_trigger"
 
 jobs:
   verify-geometry:
