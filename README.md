@@ -1,4 +1,4 @@
-# GenCAD-AI v0.3.0 — Proof-to-Geometry Bridge
+# GenCAD-AI v0.3.1 — Geometry Verification
 
 ![tests](https://github.com/nuvazic-pixel/GenCAD-AI/actions/workflows/tests.yml/badge.svg)
 
@@ -6,8 +6,8 @@ GenCAD-AI is an engineering prototype for converting natural-language design req
 
 The project focuses on the safety boundary between probabilistic language-model interpretation and deterministic engineering logic.
 
-> **Current scope:** engineering-intent extraction, normalization, terminology resolution, validation and reproducible evaluation.  
-> Production CAD/CAE generation is a later stage; this repository does not claim that an LLM directly produces engineering-safe CAD.
+> **Current scope:** engineering-intent extraction, evidence verification, deterministic validation, constrained CAD generation, geometry verification, provenance and release/quarantine control.  
+> The project does not treat LLM output or CAD-generator output as engineering truth without deterministic verification.
 
 ## Core principle
 
@@ -38,7 +38,15 @@ ReleasedBracketParameters
       ↓
 Constrained CadQuery Generator
       ↓
-STEP / STL + provenance manifest
+candidate STEP / STL
+      ↓
+GeometryVerifier                 artifact verification boundary
+      ↓
+CADArtifactReleaseGate
+   ┌────────┴────────┐
+ FAIL              PASS
+   ↓                  ↓
+quarantine/        released/
 ```
 
 The model is not allowed to create `DERIVED` engineering evidence. Missing information remains unknown until an explicit deterministic resolver, standard, or calculation supplies it.
@@ -355,6 +363,75 @@ The generated STL was independently inspected as watertight with a positive volu
 
 The binary geometry is stored as a GitHub Actions artifact; repository-side evidence is preserved under `reports/geometry_demo_001/`.
 
+## v0.3.1 — Geometry Verification
+
+v0.3.1 adds a third independent trust boundary after geometry generation:
+
+```text
+CadQuery output ≠ releasable CAD artifact
+```
+
+The verifier inspects the exported STL itself rather than asking the CAD generator whether the result is correct.
+
+The first verification layer checks:
+
+- solid validity
+- watertightness
+- positive volume
+- expected mounting-hole count
+- bounding dimensions
+- pipe-opening diameter
+- wall geometry
+- canonical mesh fingerprint
+
+The result is captured in a typed `GeometryVerificationReport`, then passed to a separate `CADArtifactReleaseGate`.
+
+### Fault-injection proof
+
+`geometry_verification_001` used the same released engineering parameters for two candidates:
+
+```text
+good candidate
+→ two mounting holes
+→ verification PASS
+→ released/
+
+fault-injected candidate
+→ right mounting hole deliberately omitted
+→ still watertight and solid-valid
+→ detected holes = 1, expected = 2
+→ HOLE_COUNT_MISMATCH
+→ artifact release FAIL
+→ quarantine/
+```
+
+The important result is that the faulty artifact was **not structurally broken**. It remained:
+
+```text
+solid_valid      true
+watertight       true
+positive_volume  true
+bbox             correct
+pipe opening     correct
+wall geometry    correct
+```
+
+but it still failed because its geometry did not match the authorized engineering parameters.
+
+Good geometry fingerprint:
+
+```text
+sha256:49da1af3e1ff71e08b47e1904117ad2b95e8852833ecfeeac9b3b438a2c14181
+```
+
+Faulty geometry fingerprint:
+
+```text
+sha256:a31c46c184cab2f5a663ba5296c8f761ae582a12e635ffc1899957a621949dea
+```
+
+This demonstrates that topological validity alone is insufficient for release.
+
 ## Safety invariants
 
 GenCAD-AI intentionally rejects common unsafe shortcuts:
@@ -479,6 +556,7 @@ See:
 - [EvidenceGuard live challenge](reports/evidence_guard_live_001/)
 - [EvidenceGuard live adjudication](reports/evidence_guard_live_001/ADJUDICATION.md)
 - [v0.3.0 proof-to-geometry evidence](reports/geometry_demo_001/)
+- [v0.3.1 geometry verification evidence](reports/geometry_verification_001/)
 
 ## Benchmark
 
@@ -548,41 +626,38 @@ case metrics
 
 ## Current status
 
-GenCAD-AI now demonstrates the full controlled path from probabilistic language interpretation to physical geometry permission:
+GenCAD-AI now enforces three independent trust boundaries:
 
 ```text
-Natural language
-      ↓
-LLM interpretation
-      ↓
-SourceEvidenceGuard
-      ↓
-EngineeringSpec
-      ↓
-Validation
-      ↓
-CADReleaseGate
-      ↓
-Released parameters only
-      ↓
-STEP / STL
+1. LLM output
+   → SourceEvidenceGuard
+   → unsupported evidence cannot become engineering truth
+
+2. EngineeringSpec
+   → CADReleaseGate
+   → UNKNOWN/HYPOTHESIS cannot become geometry parameters
+
+3. CadQuery output
+   → GeometryVerifier + CADArtifactReleaseGate
+   → incorrect geometry cannot become a released artifact
 ```
 
-The first live geometry proof established:
+The v0.3.1 proof established:
 
-- unsupported source evidence blocks CAD generation;
-- explicit supported evidence releases the same geometry request;
-- the CAD generator cannot accept raw parser intent directly;
-- generated geometry carries a provenance manifest;
-- the STEP/STL hashes are linked to the released EngineeringSpec and release decision;
-- the exported STL is watertight;
-- `prompt_v1` remains unchanged.
+- a known-good exported STL is valid, watertight and dimensionally consistent;
+- expected hole count can be measured from the exported artifact;
+- pipe-opening diameter and wall geometry are measured independently from the mesh;
+- canonical geometry fingerprints distinguish good and faulty shapes;
+- a deliberate one-hole generator defect remains a valid watertight solid but is detected as `HOLE_COUNT_MISMATCH`;
+- the good candidate is routed to `released/`;
+- the faulty candidate is routed to `quarantine/`;
+- the release/quarantine boundary is enforced by GitHub Actions.
 
 ### Current decision
 
-The v0.3.0 proof is intentionally narrow: one generator and one two-hole bracket family.
+The next milestone should be **v0.3.2 — Deterministic Geometry Reproducibility**.
 
-The next highest-value milestone is **v0.3.1 Geometry Verification** rather than a broader generative prompt surface. It should validate geometric invariants such as solid validity, expected hole count, minimum wall geometry, bounding dimensions, and reproducible parameter-to-shape fingerprints before expanding to more CAD families.
+It should generate the same released parameter set multiple times, canonicalize the resulting geometry and prove that the geometry fingerprint is stable across repeated builds. Byte-identical STEP files are not required; geometric/topological equivalence is the target.
 
 
 ---
