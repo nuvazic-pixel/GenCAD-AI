@@ -1,0 +1,75 @@
+name: GenCAD-AI verified_feature_language_001
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".verified_feature_language_001_trigger"
+
+jobs:
+  feature-language-demo:
+    runs-on: ubuntu-latest
+
+    env:
+      GENCAD_GIT_COMMIT: ${{ github.sha }}
+      GENCAD_FEATURE_OUTPUT: reports/verified_feature_language_001
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install CAD extras
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[cad]"
+
+      - name: Run verified feature language demo
+        run: |
+          python -m scripts.run_verified_feature_language_demo
+
+      - name: Enforce released-vs-blocked boundary
+        shell: bash
+        run: |
+          test -s reports/verified_feature_language_001/released/pipe_saddle_feature_program.step
+          test -s reports/verified_feature_language_001/released/pipe_saddle_feature_program.stl
+          test -s reports/verified_feature_language_001/released/feature_program.json
+          test -s reports/verified_feature_language_001/released/verified_feature_program.json
+          test -s reports/verified_feature_language_001/released/feature_program_verification.json
+          test -s reports/verified_feature_language_001/released/geometry_verification.json
+          test -s reports/verified_feature_language_001/released/cad_artifact_release.json
+          test -s reports/verified_feature_language_001/released/viewer.html
+
+          test -s reports/verified_feature_language_001/blocked_proposal/feature_program.json
+          test -s reports/verified_feature_language_001/blocked_proposal/feature_program_verification.json
+          test -s reports/verified_feature_language_001/blocked_proposal/viewer.html
+
+          test ! -e reports/verified_feature_language_001/blocked_proposal/blocked.step
+          test ! -e reports/verified_feature_language_001/blocked_proposal/blocked.stl
+
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          root = Path("reports/verified_feature_language_001")
+          summary = json.loads((root / "feature_language_demo_summary.json").read_text())
+          assert summary["released"]["feature_gate"]["passed"] is True
+          assert summary["released"]["feature_count"] == 4
+          assert summary["released"]["geometry_verified"] is True
+          assert summary["released"]["artifact_releasable"] is True
+
+          blocked = summary["blocked_proposal"]
+          assert blocked["feature_gate"]["passed"] is False
+          assert blocked["geometry_compilation_allowed"] is False
+          assert "mounting_hole_right.diameter_mm" in blocked["feature_gate"]["blocked_parameters"]
+          PY
+
+      - name: Upload v0.4.0 visual proof
+        uses: actions/upload-artifact@v4
+        with:
+          name: gencad-ai-verified-feature-language-001
+          path: reports/verified_feature_language_001/
+          if-no-files-found: error
+          retention-days: 90
