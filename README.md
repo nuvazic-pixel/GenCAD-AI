@@ -1,8 +1,8 @@
-# GenCAD-AI v0.3.2 — Deterministic Geometry Reproducibility
+# GenCAD-AI v0.4.0 — Evidence-Bound Engineering Agent
 
 ![tests](https://github.com/nuvazic-pixel/GenCAD-AI/actions/workflows/tests.yml/badge.svg)
 
-GenCAD-AI is an engineering prototype for converting natural-language design requests into a typed, validated engineering intent before any CAD geometry is generated.
+GenCAD-AI is an evidence-bound engineering agent prototype that converts design intent into typed engineering evidence, verified CAD features, validated geometry and auditable release decisions.
 
 The project focuses on the safety boundary between probabilistic language-model interpretation and deterministic engineering logic.
 
@@ -32,11 +32,17 @@ EngineeringSpec                  deterministic boundary
       ↓
 Validator
       ↓
-CADReleaseGate                    geometry permission boundary
+CADReleaseGate                    parameter permission boundary
       ↓ PASS only
 ReleasedBracketParameters
       ↓
-Constrained CadQuery Generator
+CADFeatureProgram                 feature intent boundary
+      ↓
+FeatureProgramGate
+      ↓ PASS only
+VerifiedCADFeatureProgram
+      ↓
+Deterministic CAD compiler
       ↓
 candidate STEP / STL
       ↓
@@ -507,6 +513,140 @@ v0.3.2 demonstrates **intra-environment reproducibility** for the tested generat
 
 It does not yet claim cross-platform, cross-kernel or cross-version fingerprint stability.
 
+## v0.4.0 — Verified CAD Feature Language
+
+v0.4.0 changes the project direction from a single hard-coded bracket generator toward a general **evidence-bound CAD feature pipeline**.
+
+The key new rule is:
+
+```text
+AI may propose CAD features.
+Only verified feature parameters may become geometry.
+```
+
+The feature path is now:
+
+```text
+Released engineering parameters
+        ↓
+CADFeatureProgram
+        ↓
+FeatureProgramGate
+        ↓
+VerifiedCADFeatureProgram
+        ↓
+deterministic compiler
+        ↓
+CadQuery geometry
+        ↓
+GeometryVerifier
+        ↓
+CADArtifactReleaseGate
+```
+
+The first feature language contains independently typed primitives for:
+
+- additive box features;
+- additive annular extrusions;
+- subtractive cylindrical cuts;
+- explicit feature operations;
+- per-parameter evidence state;
+- source-field references;
+- deterministic rule IDs.
+
+A raw `CADFeatureProgram` may contain:
+
+```text
+CONFIRMED
+DERIVED
+HYPOTHESIS
+UNKNOWN
+```
+
+but the compiler accepts only:
+
+```text
+VerifiedCADFeatureProgram
+```
+
+whose parameters are limited to:
+
+```text
+CONFIRMED
+DERIVED
+```
+
+A regression test explicitly prevents unverified feature programs from reaching the CAD compiler.
+
+### Released vs blocked proof
+
+`verified_feature_language_001` contains two versions of the same feature topology.
+
+Released:
+
+```text
+base_plate
+pipe_saddle
+mounting_hole_left
+mounting_hole_right
+
+FeatureProgramGate → PASS
+GeometryVerifier   → PASS
+Artifact release   → PASS
+```
+
+Blocked proposal:
+
+```text
+mounting_hole_right.diameter_mm
+state = UNKNOWN
+
+FeatureProgramGate
+→ UNTRUSTED_FEATURE_PARAMETER
+→ no VerifiedCADFeatureProgram
+→ geometry compilation forbidden
+```
+
+The geometry compiled from the verified feature language retained the known canonical bracket fingerprint:
+
+```text
+sha256:49da1af3e1ff71e08b47e1904117ad2b95e8852833ecfeeac9b3b438a2c14181
+```
+
+### Interactive 3D Evidence Viewer
+
+The v0.4.0 artifact contains interactive browser viewers for both the released program and blocked proposal.
+
+The viewer exposes:
+
+- rotatable final STL geometry;
+- semantic feature overlays;
+- feature operation and primitive type;
+- each parameter value;
+- evidence state;
+- source engineering field;
+- deterministic rule ID;
+- feature-gate PASS/BLOCKED status.
+
+Evidence colors are:
+
+```text
+CONFIRMED   green
+DERIVED     amber
+HYPOTHESIS  purple
+UNKNOWN     red
+```
+
+This creates a direct visual explanation of **why** a CAD feature is allowed or blocked.
+
+### Prior art
+
+The move toward an intermediate CAD feature representation is informed by existing generative-CAD research, including the GenCAD project (`ferdous-alam/GenCAD`).
+
+GenCAD-AI's implementation is independent and adds a different constraint: every executable feature parameter remains bound to evidence and must pass a deterministic feature gate.
+
+See `docs/PRIOR_ART_GENCAD.md`.
+
 ## Safety invariants
 
 GenCAD-AI intentionally rejects common unsafe shortcuts:
@@ -633,6 +773,8 @@ See:
 - [v0.3.0 proof-to-geometry evidence](reports/geometry_demo_001/)
 - [v0.3.1 geometry verification evidence](reports/geometry_verification_001/)
 - [v0.3.2 geometry reproducibility evidence](reports/geometry_reproducibility_001/)
+- [v0.4.0 verified feature language evidence](reports/verified_feature_language_001/)
+- [GenCAD prior-art note](docs/PRIOR_ART_GENCAD.md)
 
 ## Benchmark
 
@@ -702,41 +844,82 @@ case metrics
 
 ## Current status
 
-GenCAD-AI now demonstrates four progressively stronger properties:
+GenCAD-AI now has a complete controlled chain from uncertain language to explainable CAD features and verified artifacts:
 
 ```text
-1. Evidence integrity
-   unsupported LLM evidence is blocked
-
-2. Geometry permission
-   only released engineering parameters may reach CAD
-
-3. Artifact verification
-   valid-but-wrong geometry is quarantined
-
-4. Geometry reproducibility
-   identical released parameters repeatedly produce
-   the same canonical verified geometry fingerprint
+Natural language / future image or sketch
+        ↓
+probabilistic interpretation
+        ↓
+evidence verification
+        ↓
+EngineeringSpec
+        ↓
+parameter release
+        ↓
+CADFeatureProgram
+        ↓
+feature evidence release
+        ↓
+VerifiedCADFeatureProgram
+        ↓
+deterministic geometry
+        ↓
+artifact verification
+        ↓
+RELEASED / QUARANTINE
 ```
 
-The v0.3.2 proof established:
+The project now demonstrates:
 
-- 5 independent repeated builds from identical released parameters;
-- 5 / 5 passed geometry verification;
-- 5 / 5 passed artifact release;
-- one unique canonical geometry fingerprint across all replicas;
-- byte-identical STL output in this run;
-- non-byte-identical STEP serialization without geometry divergence;
-- a one-parameter sensitivity control produced a different geometry fingerprint;
-- the reproducibility workflow is enforced in GitHub Actions.
+- unsupported model evidence can be intercepted live;
+- incomplete engineering evidence blocks CAD generation;
+- valid-but-wrong CAD geometry is quarantined;
+- repeated builds reproduce the same canonical geometry;
+- CAD topology is represented as explicit semantic features;
+- feature parameters carry evidence and deterministic provenance;
+- an UNKNOWN feature parameter blocks compilation before geometry exists;
+- a browser viewer can explain feature-by-feature why a design is released or blocked.
 
-### Current decision
+### New direction
 
-The next scientifically useful step is **v0.3.3 — Cross-Environment Reproducibility**.
+The project is intentionally moving beyond a single bracket benchmark toward an **Evidence-Bound Engineering Agent**.
 
-That experiment should run the same released parameters in separately provisioned environments (for example Python 3.11 and 3.12 jobs with pinned CAD dependencies), then compare canonical fingerprints across jobs.
+The next milestones prioritize visible engineering capability:
 
-Until that is tested, v0.3.2 should be described precisely as **intra-environment deterministic geometry reproducibility**.
+```text
+v0.4.x  Verified CAD Feature Language + 3D Evidence Viewer
+v0.5    Multi-candidate design generation and comparison
+v0.6    Manufacturability Gate for additive manufacturing
+v0.7    Simplified structural / load checks with explicit assumptions
+v0.8    Integrated web engineering workspace
+v0.9    Printed-part / scan comparison
+v1.0    Engineering Passport for released physical designs
+```
+
+The target demo is:
+
+```text
+photo / sketch + requirement
+        ↓
+identify missing facts
+        ↓
+ask for confirmation
+        ↓
+generate multiple feature-level candidates
+        ↓
+reject unsafe / unmanufacturable candidates
+        ↓
+release verified CAD
+        ↓
+manufacture
+        ↓
+compare physical artifact against digital intent
+```
+
+The goal is no longer simply text-to-CAD.
+
+It is **controlled engineering from evidence to physical artifact**.
 
 
 ---
