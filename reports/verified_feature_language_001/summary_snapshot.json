@@ -1,0 +1,22 @@
+{
+  "demo": "GenCAD-AI v0.4.0 Verified CAD Feature Language",
+  "run_id": 35631825841,
+  "git_commit": "97508257b3688d49f8780ccdd6589c227eb1b3b5",
+  "artifact_id": 10653549654,
+  "artifact_sha256": "d8ab3bab695ca6abd9c9a87348b728d60d07840964022ce44e31de2597429434",
+  "released": {
+    "program_hash": "sha256:94d4071a5180a5362add3ddbf2fd20ced372f396793437fdeb036febfa6d249e",
+    "feature_count": 4,
+    "feature_gate_passed": true,
+    "geometry_verified": true,
+    "artifact_releasable": true,
+    "geometry_fingerprint": "sha256:49da1af3e1ff71e08b47e1904117ad2b95e8852833ecfeeac9b3b438a2c14181"
+  },
+  "blocked_proposal": {
+    "feature_gate_passed": false,
+    "blocked_feature": "mounting_hole_right",
+    "blocked_parameter": "mounting_hole_right.diameter_mm",
+    "failed_rule": "UNTRUSTED_FEATURE_PARAMETER",
+    "geometry_compilation_allowed": false
+  }
+}
