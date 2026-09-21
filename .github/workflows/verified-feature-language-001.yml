@@ -2,9 +2,6 @@ name: GenCAD-AI verified_feature_language_001
 
 on:
   workflow_dispatch:
-  push:
-    paths:
-      - ".verified_feature_language_001_trigger"
 
 jobs:
   feature-language-demo:
