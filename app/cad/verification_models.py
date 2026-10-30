@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field
 
 
 class GeometryVerificationReport(BaseModel):
-    verifier_version: str = "0.3.1"
+    verifier_version: str = "0.3.2"
     artifact_file: str
 
     solid_valid: bool
@@ -17,6 +17,14 @@ class GeometryVerificationReport(BaseModel):
     expected_hole_count: int
     detected_hole_count: int
     hole_count_match: bool
+
+    # None marks checks absent from historical v0.3.1 reports.
+    expected_hole_diameter_mm: float | None = None
+    measured_hole_diameters_mm: list[float | None] = Field(default_factory=list)
+    hole_diameters_match: bool | None = None
+    expected_hole_centers_mm: list[list[float]] = Field(default_factory=list)
+    measured_hole_centers_mm: list[list[float] | None] = Field(default_factory=list)
+    hole_positions_match: bool | None = None
 
     expected_bbox_mm: list[float]
     measured_bbox_mm: list[float]
