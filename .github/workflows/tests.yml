@@ -22,3 +22,17 @@ jobs:
       - run: python -m pip install --upgrade pip
       - run: pip install -r requirements.txt
       - run: pytest -q
+
+  geometry:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install real geometry dependencies
+        run: pip install -e ".[cad]" pytest
+      - name: Verify mounting holes in real STL artifacts
+        run: |
+          python -c "import cadquery, trimesh"
+          pytest -q tests/test_mounting_hole_verification.py

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from hashlib import sha256
 import math
 from pathlib import Path
@@ -13,6 +14,8 @@ RULE_SOLID_INVALID = "SOLID_INVALID"
 RULE_NOT_WATERTIGHT = "MESH_NOT_WATERTIGHT"
 RULE_NON_POSITIVE_VOLUME = "NON_POSITIVE_VOLUME"
 RULE_HOLE_COUNT = "HOLE_COUNT_MISMATCH"
+RULE_HOLE_DIAMETER = "MOUNTING_HOLE_DIAMETER_MISMATCH"
+RULE_HOLE_POSITION = "MOUNTING_HOLE_POSITION_MISMATCH"
 RULE_BBOX = "BOUNDING_BOX_MISMATCH"
 RULE_PIPE_DIAMETER = "PIPE_OPENING_DIAMETER_MISMATCH"
 RULE_WALL = "WALL_THICKNESS_MISMATCH"
@@ -92,16 +95,65 @@ def _closed_loop_lengths(path) -> list[float]:
     return lengths
 
 
-def _detect_mounting_holes(mesh, params: ReleasedBracketParameters) -> int:
+@dataclass(frozen=True)
+class _MountingHole:
+    area_mm2: float
+    center_mm: tuple[float, float] | None
+    diameter_mm: float | None
+    radial_deviation_mm: float | None
+
+
+def _measure_planar_loop(points) -> _MountingHole:
+    """Measure a polygonal XY boundary without trusting generator metadata.
+
+    The area centroid is unchanged by collinear subdivision of STL section
+    edges. Perimeter gives the circular diameter, while vertex and edge-midpoint
+    radial residuals reject non-circular boundaries with the same perimeter.
+    """
+    xy = [(float(point[0]), float(point[1])) for point in points]
+    if len(xy) > 1 and math.dist(xy[0], xy[-1]) <= 1e-9:
+        xy.pop()
+    if len(xy) < 3 or not all(math.isfinite(c) for point in xy for c in point):
+        return _MountingHole(0.0, None, None, None)
+
+    edges = list(zip(xy, xy[1:] + xy[:1]))
+    crosses = [a[0] * b[1] - b[0] * a[1] for a, b in edges]
+    twice_area = math.fsum(crosses)
+    if abs(twice_area) <= 1e-9:
+        return _MountingHole(0.0, None, None, None)
+
+    center = tuple(
+        math.fsum((a[axis] + b[axis]) * cross
+                  for (a, b), cross in zip(edges, crosses)) / (3.0 * twice_area)
+        for axis in (0, 1)
+    )
+    perimeter = math.fsum(math.dist(a, b) for a, b in edges)
+    radius = perimeter / (2.0 * math.pi)
+    samples = xy + [((a[0] + b[0]) / 2.0, (a[1] + b[1]) / 2.0)
+                    for a, b in edges]
+    radial_deviation = max(abs(math.dist(point, center) - radius) for point in samples)
+    return _MountingHole(abs(twice_area) / 2.0, center, radius * 2.0, radial_deviation)
+
+
+def _measure_mounting_holes(mesh, params: ReleasedBracketParameters) -> list[_MountingHole]:
     section = mesh.section(
         plane_origin=[0.0, 0.0, params.base_thickness_mm / 2.0],
         plane_normal=[0.0, 0.0, 1.0],
     )
-    loops = _closed_loop_lengths(section)
+    if section is None:
+        return []
+    loops = [
+        _measure_planar_loop(entity.discrete(section.vertices))
+        for entity in section.entities if getattr(entity, "closed", False)
+    ]
+    if not loops:
+        return []
 
-    # For pipe_saddle_bracket_v1 at mid-base, one loop is the exterior
-    # perimeter and every additional closed loop is a through-hole.
-    return max(0, len(loops) - 1)
+    # At mid-base, the supported bracket has one exterior and two through-holes.
+    # Identify the exterior geometrically, independent of entity winding/order.
+    exterior = max(range(len(loops)), key=lambda index: loops[index].area_mm2)
+    holes = [loop for index, loop in enumerate(loops) if index != exterior]
+    return sorted(holes, key=lambda hole: hole.center_mm or (math.inf, math.inf))
 
 
 def _measure_pipe_opening_diameter(
@@ -129,6 +181,8 @@ def verify_bracket_stl(
     bbox_tolerance_mm: float = 0.15,
     pipe_tolerance_mm: float = 0.15,
     wall_tolerance_mm: float = 0.15,
+    hole_tolerance_mm: float = 0.15,
+    hole_position_tolerance_mm: float = 0.15,
 ) -> GeometryVerificationReport:
     if not isinstance(params, ReleasedBracketParameters):
         raise TypeError("GeometryVerifier requires ReleasedBracketParameters")
@@ -166,8 +220,28 @@ def verify_bracket_stl(
         for delta in bbox_delta
     )
 
-    detected_holes = _detect_mounting_holes(mesh, params)
+    mounting_holes = _measure_mounting_holes(mesh, params)
+    detected_holes = len(mounting_holes)
     hole_count_match = detected_holes == params.hole_count
+    hole_diameters_match = hole_count_match and all(
+        hole.diameter_mm is not None
+        and abs(hole.diameter_mm - params.hole_diameter_mm) <= hole_tolerance_mm
+        and hole.radial_deviation_mm is not None
+        and hole.radial_deviation_mm <= hole_tolerance_mm / 2.0
+        for hole in mounting_holes
+    )
+    expected_centers = sorted([
+        (layout.left_hole_x_mm, 0.0),
+        (layout.right_hole_x_mm, 0.0),
+    ])
+    hole_positions_match = (
+        detected_holes == len(expected_centers)
+        and all(
+            hole.center_mm is not None
+            and math.dist(hole.center_mm, expected) <= hole_position_tolerance_mm
+            for hole, expected in zip(mounting_holes, expected_centers)
+        )
+    )
 
     measured_pipe = _measure_pipe_opening_diameter(mesh, params)
     pipe_delta = (
@@ -205,6 +279,10 @@ def verify_bracket_stl(
         failed_rules.append(RULE_NON_POSITIVE_VOLUME)
     if not hole_count_match:
         failed_rules.append(RULE_HOLE_COUNT)
+    if not hole_diameters_match:
+        failed_rules.append(RULE_HOLE_DIAMETER)
+    if not hole_positions_match:
+        failed_rules.append(RULE_HOLE_POSITION)
     if not dimensions_match:
         failed_rules.append(RULE_BBOX)
     if not pipe_opening_match:
@@ -223,6 +301,15 @@ def verify_bracket_stl(
         expected_hole_count=params.hole_count,
         detected_hole_count=detected_holes,
         hole_count_match=hole_count_match,
+        expected_hole_diameter_mm=params.hole_diameter_mm,
+        measured_hole_diameters_mm=[hole.diameter_mm for hole in mounting_holes],
+        hole_diameters_match=hole_diameters_match,
+        expected_hole_centers_mm=[list(center) for center in expected_centers],
+        measured_hole_centers_mm=[
+            None if hole.center_mm is None else list(hole.center_mm)
+            for hole in mounting_holes
+        ],
+        hole_positions_match=hole_positions_match,
         expected_bbox_mm=expected_bbox,
         measured_bbox_mm=measured_bbox,
         bbox_delta_mm=bbox_delta,
